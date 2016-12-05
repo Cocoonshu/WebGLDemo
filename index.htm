@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <title>atom_百度搜索</title>
+    <script src="js/webgl.js"></script>
+    <script>
+      function begin () {
+        let i = 0xABCD;
+        console.log('#' + ((i & 0xFF) + "").toString(16) + (((i >> 8) & 0xFF) + "").toString(16));
+      };
+    </script>
+  </head>
+  <body onload="begin(); onGLCanvasCreate('GLCanvas');" onunload="onGLCanvasDestoryed()" onresize="onGLCanvasResize()">
+    <canvas id="GLCanvas" style="border:no-border;color:#FF0000">WebGL isn't supported!</canvas>
+  </body>
+</html>
