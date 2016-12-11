@@ -1,7 +1,23 @@
-module.exports =
+'use strict'
+
+function GLColorTest() {
+  console.log("color = #123 -> " + (new GLColor('#123').toHexColor()));
+  console.log("color = #7ABC -> " + (new GLColor('#7ABC').toHexColor()));
+  console.log("color = #FF1122 -> " + (new GLColor('#FF1122').toHexColor()));
+  console.log("color = #33FF1122 -> " + (new GLColor('#33FF1122').toHexColor()));
+  console.log("color = 0x44AAAACC -> " + (new GLColor(0x44AAAACC).toHexColor()));
+}
+
+//module.exports =
 class GLColor {
-  constructor(intColor) {
-    this.mIntColor = intColor;
+  constructor(color) {
+    if (typeof(color) == 'number') {
+      this.mIntColor = color;
+    } else if (typeof(color) == 'string') {
+      this.fromHexColor(color);
+    } else {
+      throw "Wrong color format";
+    }
   }
 
   getIntAlpha() {
@@ -52,12 +68,85 @@ class GLColor {
     let intRed   = this.getIntRed();
     let intGreen = this.getIntGreen();
     let intBlue  = this.getIntBlue();
-    let transfer = (elem) => {
-
-      return ;
+    let transfer = function (elem) {
+      let colorStr = elem.toString(16).toUpperCase();
+      if (colorStr.length == 1) {
+        return '0' + colorStr;
+      } else {
+        return colorStr;
+      }
     };
 
-    return "#" + intAlpha.toString(16).toUpperCase();
+    return "#" + transfer(intAlpha) + transfer(intRed) + transfer(intGreen) + transfer(intBlue);
+  }
+
+  fromHexColor(hexColor) {
+    if (typeof(hexColor) == 'string') {
+      if (hexColor[0] == '#') {
+        let intAlpha = 0;
+        let intRed   = 0;
+        let intGreen = 0;
+        let intBlue  = 0;
+        switch (hexColor.length) {
+          case 4: {// #RGB
+            let strRed   = hexColor.substring(1, 2);
+            let strGreen = hexColor.substring(2, 3);
+            let strBlue  = hexColor.substring(3, 4);
+
+            intAlpha = 0xFF;
+            intRed   = parseInt(strRed + strRed, 16);
+            intGreen = parseInt(strGreen + strGreen, 16);
+            intBlue  = parseInt(strBlue + strBlue, 16);
+            intRed   = isNaN(intRed) ? 0x00 : intRed;
+            intGreen = isNaN(intGreen) ? 0x00 : intGreen;
+            intBlue  = isNaN(intBlue) ? 0x00 : intBlue;
+          } break;
+
+          case 5: {// #ARGB
+            let strAlpha = hexColor.substring(1, 2);
+            let strRed   = hexColor.substring(2, 3);
+            let strGreen = hexColor.substring(3, 4);
+            let strBlue  = hexColor.substring(4, 5);
+
+            intAlpha = parseInt(strAlpha + strAlpha, 16);
+            intRed   = parseInt(strRed + strRed, 16);
+            intGreen = parseInt(strGreen + strGreen, 16);
+            intBlue  = parseInt(strBlue + strBlue, 16);
+            intAlpha = isNaN(intAlpha) ? 0xFF : intAlpha;
+            intRed   = isNaN(intRed) ? 0x00 : intRed;
+            intGreen = isNaN(intGreen) ? 0x00 : intGreen;
+            intBlue  = isNaN(intBlue) ? 0x00 : intBlue;
+          } break;
+
+          case 7: {// #RRGGBB
+            intAlpha = 0xFF;
+            intRed   = parseInt(hexColor.substring(1, 3), 16);
+            intGreen = parseInt(hexColor.substring(3, 5), 16);
+            intBlue  = parseInt(hexColor.substring(5, 7), 16);
+            intRed   = isNaN(intRed) ? 0x00 : intRed;
+            intGreen = isNaN(intGreen) ? 0x00 : intGreen;
+            intBlue  = isNaN(intBlue) ? 0x00 : intBlue;
+          } break;
+
+          case 9: {// #AARRGGBB
+            intAlpha = parseInt(hexColor.substring(1, 3), 16);
+            intRed   = parseInt(hexColor.substring(3, 5), 16);
+            intGreen = parseInt(hexColor.substring(5, 7), 16);
+            intBlue  = parseInt(hexColor.substring(7, 9), 16);
+            intAlpha = isNaN(intAlpha) ? 0xFF : intAlpha;
+            intRed   = isNaN(intRed) ? 0x00 : intRed;
+            intGreen = isNaN(intGreen) ? 0x00 : intGreen;
+            intBlue  = isNaN(intBlue) ? 0x00 : intBlue;
+          } break;
+
+          default: {
+            throw "Wrong color format";
+          } break;
+        }
+
+        this.setIntColor(intAlpha, intRed, intGreen, intBlue);
+      }
+    }
   }
 
 }

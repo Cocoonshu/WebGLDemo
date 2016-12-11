@@ -3,15 +3,41 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <title>atom_百度搜索</title>
+    <script src="js/shaders/base.vs" type="x-shader/x-vertex" id="base_vs"></script>
+    <script src="js/shaders/base.fs" type="x-shader/x-fragment" id="base_fs"></script>
     <script src="js/webgl.js"></script>
+    <script src="js/glcolor.js"></script>
+    <script src="js/glimageview.js"></script>
     <script>
-      function begin () {
-        let i = 0xABCD;
-        console.log('#' + ((i & 0xFF) + "").toString(16) + (((i >> 8) & 0xFF) + "").toString(16));
+      'use strict'
+      var glView   = null;
+      var glCanvas = null;
+
+      function setup() {
+        onGLCanvasResize();
       };
+
+      function onGLCanvasCreate(id) {
+        glView   = document.getElementById(id);
+        glCanvas = new GLImageView(glView);
+      }
+
+      function onGLCanvasResize() {
+        if (glView != null && glCanvas != null) {
+          glCanvas.resize(glView.width, glView.height);
+        }
+      }
+
+      function onGLCanvasDestoryed() {
+        if (glCanvas != null) {
+          glCanvas.destory();
+          glCanvas = null;
+        }
+        glView = null;
+      }
     </script>
   </head>
-  <body onload="begin(); onGLCanvasCreate('GLCanvas');" onunload="onGLCanvasDestoryed()" onresize="onGLCanvasResize()">
-    <canvas id="GLCanvas" style="border:no-border;color:#FF0000">WebGL isn't supported!</canvas>
+  <body onload="onGLCanvasCreate('GLCanvas'); setup();" onunload="onGLCanvasDestoryed()" onresize="onGLCanvasResize()">
+    <canvas id="GLCanvas" style="border:no-border;color:#FF0000;">WebGL isn't supported!</canvas>
   </body>
 </html>
