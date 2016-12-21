@@ -6,6 +6,7 @@ function GLColorTest() {
   console.log("color = #FF1122 -> " + (new GLColor('#FF1122').toHexColor()));
   console.log("color = #33FF1122 -> " + (new GLColor('#33FF1122').toHexColor()));
   console.log("color = 0x44AAAACC -> " + (new GLColor(0x44AAAACC).toHexColor()));
+  console.log("color = {0.9, 0.8, 0.5, 1.0} -> " + (new GLColor([0.9, 0.8, 0.5, 1.0]).toHexColor()));
 }
 
 //module.exports =
@@ -15,6 +16,8 @@ class GLColor {
       this.mIntColor = color;
     } else if (typeof(color) == 'string') {
       this.fromHexColor(color);
+    } else if (color instanceof Array && (color.length == 3 || color.length == 4)) {
+      this.fromFloatArray(color);
     } else {
       throw "Wrong color format";
     }
@@ -78,7 +81,7 @@ class GLColor {
     };
 
     return "#" + transfer(intAlpha) + transfer(intRed) + transfer(intGreen) + transfer(intBlue);
-  }
+  } // #end toHexColor()
 
   fromHexColor(hexColor) {
     if (typeof(hexColor) == 'string') {
@@ -147,6 +150,29 @@ class GLColor {
         this.setIntColor(intAlpha, intRed, intGreen, intBlue);
       }
     }
-  }
+  } // #end fromHexColor(hexColor)
+
+  fromFloatArray(color) {
+    let length   = color.length;
+    let intAlpha = 0;
+    let intRed   = 0;
+    let intGreen = 0;
+    let intBlue  = 0;
+    if (length == 3) {
+      intAlpha = 255;
+      intRed   = parseInt(color[0] * 255);
+      intGreen = parseInt(color[1] * 255);
+      intBlue  = parseInt(color[2] * 255);
+    } else if (length == 4) {
+      intRed   = parseInt(color[0] * 255);
+      intGreen = parseInt(color[1] * 255);
+      intBlue  = parseInt(color[2] * 255);
+      intAlpha = parseInt(color[3] * 255);
+    } else {
+      throw "Wrong color format";
+    }
+
+    this.setIntColor(intAlpha, intRed, intGreen, intBlue);
+  } // #end fromFloatArray(color)
 
 }

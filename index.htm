@@ -3,17 +3,37 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <title>atom_百度搜索</title>
-    <script src="js/shaders/base.vs" type="x-shader/x-vertex" id="base_vs"></script>
-    <script src="js/shaders/base.fs" type="x-shader/x-fragment" id="base_fs"></script>
-    <script src="js/webgl.js"></script>
+    <script type="x-shader/x-vertex" id="base_vs">
+      attribute vec3 v3Position;
+      void main(void)
+      {
+        gl_Position = vec4(v3Position, 1.0);
+      }
+    </script>
+    <script type="x-shader/x-fragment" id="base_fs">
+      void main(void)
+      {
+        gl_FragColor = vec4(0.3, 1.0, 0.6, 1.0);
+      }
+    </script>
+
+    <script src="js/geometry/mesh.js"></script>
+    <script src="js/geometry/plane.js"></script>
+    <script src="js/material/material.js"></script>
+    <script src="js/material/texture.js"></script>
+    <script src="js/model/model.js"></script>
+    <script src="js/model/imageplane.js"></script>
+    <script src="js/shader.js"></script>
     <script src="js/glcolor.js"></script>
+    <script src="js/webgl.js"></script>
     <script src="js/glimageview.js"></script>
     <script>
       'use strict'
-      var glView   = null;
-      var glCanvas = null;
+      var glView       = null;
+      var glCanvas     = null;
 
       function setup() {
+        glCanvas.create();
         onGLCanvasResize();
       };
 
