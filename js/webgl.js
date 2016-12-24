@@ -33,9 +33,16 @@ function checkGLEvnvirnment() {
   };
 
   // GLColor
+  isAllOk &= classChecker(Shader);
   isAllOk &= classChecker(GLColor, 0);
+  isAllOk &= classChecker(Material);
+  isAllOk &= classChecker(Texture);
   isAllOk &= classChecker(Mesh);
+  isAllOk &= classChecker(Model);
+  isAllOk &= classChecker(ShaderLoader);
+  isAllOk &= classChecker(ModelLoader);
   isAllOk &= classChecker(Plane);
+  isAllOk &= classChecker(ImagePlane);
 
   // Shaders
   isAllOk &= shaderChecker('base_vs');
@@ -89,7 +96,7 @@ class GLCanvas {
     if (!this.mIsGLValid) return;
     this.mGL.viewportWidth  = width;
     this.mGL.viewportHeight = height;
-    this.mGL.viewport(0, 0, width, height);
+    this.mGL.viewport(width / 2, 0, width / 2, height / 2);
     this.requestRender();
     this.onGLResize(width, height);
   }

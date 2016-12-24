@@ -4,16 +4,28 @@
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <title>atom_百度搜索</title>
     <script type="x-shader/x-vertex" id="base_vs">
-      attribute vec3 v3Position;
-      void main(void)
-      {
-        gl_Position = vec4(v3Position, 1.0);
+      attribute     vec3 aPosition;
+      attribute     vec3 aNormal;
+      attribute     vec4 aVertexColor;
+      attribute     vec2 aCoordinate;
+      uniform       mat4 uMatModelView;
+      uniform       mat4 uMatProjection;
+      varying highp vec2 vTextureCoord;
+      varying highp vec4 uDiffuseColor;
+
+      void main(void) {
+        gl_Position = uMatProjection * uMatModelView * vec4(aPosition, 1.0);
+        vTextureCoord = aCoordinate;
+        uDiffuseColor = aVertexColor;
       }
     </script>
     <script type="x-shader/x-fragment" id="base_fs">
-      void main(void)
-      {
-        gl_FragColor = vec4(0.3, 1.0, 0.6, 1.0);
+      varying highp vec2      vTextureCoord;
+      uniform       sampler2D uDiffuseSampler;
+      uniform highp vec4      uDiffuseColor;
+
+      void main(void) {
+        gl_FragColor = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));
       }
     </script>
 
@@ -21,10 +33,12 @@
     <script src="js/geometry/plane.js"></script>
     <script src="js/material/material.js"></script>
     <script src="js/material/texture.js"></script>
+    <script src="js/material/glcolor.js"></script>
+    <script src="js/loader/shaderloader.js"></script>
+    <script src="js/loader/modelloader.js"></script>
     <script src="js/model/model.js"></script>
     <script src="js/model/imageplane.js"></script>
     <script src="js/shader.js"></script>
-    <script src="js/glcolor.js"></script>
     <script src="js/webgl.js"></script>
     <script src="js/glimageview.js"></script>
     <script>

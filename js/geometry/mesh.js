@@ -2,16 +2,12 @@
 
 class Mesh {
   constructor() {
-    const MODE_POINTS         = "POINTS";
-    const MODE_LINES          = "LINES";
-    const MODE_LINE_LOOP      = "LINE_LOOP";
-    const MODE_LINE_STRIP     = "LINE_STRIP";
-    const MODE_TRANGLES       = "TRIANGLES";
-    const MODE_TRIANGLE_STRIP = "TRIANGLE_STRIP";
-    const MODE_TRIANGLE_FAN   = "TRIANGLE_FAN";
-
     this.mName              = null;
-    this.mDrawModeString    = null;
+    this.mDrawMode          = null;
+    this.mDrawModeName      = null;
+    this.mDrawProgramName   = null;
+    this.mDrawMaterialName  = null;
+
     this.mVertexes          = null;
     this.mNormals           = null;
     this.mCoords            = null;
@@ -26,6 +22,14 @@ class Mesh {
 
   setName(name) {
     this.mName = name;
+  }
+
+  attachDrawProgram(program) {
+    this.mDrawProgram = program;
+  }
+
+  attachDrawMaterial(material) {
+    this.mDrawMaterial = material;
   }
 
   fillVertex(vertexes) {
@@ -48,8 +52,16 @@ class Mesh {
     this.mIndices = indices;
   }
 
-  fillDrawModeString(drawModeString) {
-    this.mDrawModeString = drawModeString;
+  setDrawModeName(name) {
+    this.mDrawModeName = name;
+  }
+
+  setDrawProgramName(name) {
+    this.mDrawProgramName = name;
+  }
+
+  setDrawMaterialName(name) {
+    this.mDrawMaterialName = name;
   }
 
   setDrawMode(mode) {
@@ -105,21 +117,21 @@ class Mesh {
   }
 
   parseDrawModeString(gl) {
-    if (this.mDrawModeString == null) {
+    if (this.mDrawModeName == null) {
       this.mDrawMode = gl.POINTS;
-    } else if (this.mDrawModeString == MODE_POINTS) {
+    } else if (this.mDrawModeName == Mesh.MODE_POINTS) {
       this.mDrawMode = gl.POINTS;
-    } else if (this.mDrawModeString == MODE_LINES) {
+    } else if (this.mDrawModeName == Mesh.MODE_LINES) {
       this.mDrawMode = gl.LINES;
-    } else if (this.mDrawModeString == MODE_LINE_LOOP) {
+    } else if (this.mDrawModeName == Mesh.MODE_LINE_LOOP) {
       this.mDrawMode = gl.LINE_LOOP;
-    } else if (this.mDrawModeString == MODE_LINE_STRIP) {
+    } else if (this.mDrawModeName == Mesh.MODE_LINE_STRIP) {
       this.mDrawMode = gl.LINE_STRIP;
-    } else if (this.mDrawModeString == MODE_TRIANGLES) {
+    } else if (this.mDrawModeName == Mesh.MODE_TRIANGLES) {
       this.mDrawMode = gl.TRIANGLES;
-    } else if (this.mDrawModeString == MODE_TRIANGLE_STRIP) {
+    } else if (this.mDrawModeName == Mesh.MODE_TRIANGLE_STRIP) {
       this.mDrawMode = gl.TRIANGLE_STRIP;
-    } else if (this.mDrawModeString == MODE_TRIANGLE_FAN) {
+    } else if (this.mDrawModeName == Mesh.MODE_TRIANGLE_FAN) {
       this.mDrawMode = gl.TRIANGLE_FAN;
     }
   }
@@ -154,4 +166,31 @@ class Mesh {
       gl.vertexAttribPointer(vertexColorSlot, 4, gl.FLOAT, false, 0, 0);
     }
   }
+
+  destory(gl) {
+    if (this.mVertexBuffer != null) {
+      gl.deleteBuffer(this.mVertexBuffer);
+      this.mVertexBuffer = null;
+    }
+    if (this.mNormalBuffer != null) {
+      gl.deleteBuffer(this.mNormalBuffer);
+      this.mNormalBuffer = null;
+    }
+    if (this.mCoordBuffer != null) {
+      gl.deleteBuffer(this.mCoordBuffer);
+      this.mCoordBuffer = null;
+    }
+    if (this.mVertexColorBuffer != null) {
+      gl.deleteBuffer(this.mVertexColorBuffer);
+      this.mVertexColorBuffer = null;
+    }
+  }
 }
+
+Mesh.MODE_POINTS         = "POINTS";
+Mesh.MODE_LINES          = "LINES";
+Mesh.MODE_LINE_LOOP      = "LINE_LOOP";
+Mesh.MODE_LINE_STRIP     = "LINE_STRIP";
+Mesh.MODE_TRANGLES       = "TRIANGLES";
+Mesh.MODE_TRIANGLE_STRIP = "TRIANGLE_STRIP";
+Mesh.MODE_TRIANGLE_FAN   = "TRIANGLE_FAN";

@@ -7,43 +7,8 @@
 
 class Model {
   static loadFromJSON(json) {
-    Model.printJSONModelInfo(json);
-    if (json == null)
-      return;
-
-    let meshArray     = json.mMesh;
-    let materialArray = json.mMaterials;
-    let meshCount     = meshArray == null ? 0 : meshArray.length;
-    let materialCount = materialArray == null ? 0 : materialArray.length;
-    let model         = new Model(json.mName);
-
-    // Mesh
-    for (let i = 0; i < meshCount; i++) {
-      if (meshArray[i] == null) {
-        continue;
-      } else {
-        let mesh = new Mesh();
-        mesh.setName(meshArray[i].mName != null ? meshArray[i].mName : ("#" + i));
-        mesh.fillVertex(meshArray[i].mVertexes);
-        mesh.fillNormal(meshArray[i].mNormals);
-        mesh.fillCoordinates(meshArray[i].mCoordinates);
-        mesh.fillVertexColors(meshArray[i].mVertexColors);
-        mesh.fillIndices(meshArray[i].mIndices);
-        model.addMesh(mesh);
-      }
-    }
-
-    // Material
-    for (let i = 0; i < meshCount; i++) {
-      if (materialArray[i] == null) {
-        continue;
-      } else {
-
-      }
-    }
-
-    return model;
-  } // #end loadFromJSON(json)
+    return ModelLoader.loadFromJSON(json);
+  }
 
   static printJSONModelInfo(json) {
     if (json == null) {
@@ -54,8 +19,10 @@ class Model {
     let modelName     = json.mName != null ? json.mName : "[null]";
     let meshArray     = json.mMesh;
     let materialArray = json.mMaterials;
-    let meshCount     = meshArray == null ? 0 : meshArray.length;
+    let programArray  = json.mPrograms;
+    let meshCount     = meshArray     == null ? 0 : meshArray.length;
     let materialCount = materialArray == null ? 0 : materialArray.length;
+    let programCount  = programArray  == null ? 0 : programArray.length;
 
     console.log("[JSONModelInfo] ===== Json model =====");
     console.log("[JSONModelInfo] Name: " + modelName);
@@ -64,13 +31,18 @@ class Model {
       if (meshArray[i] == null) {
         console.log("[JSONModelInfo]     #" + i + " [null]");
       } else {
-        let name        = meshArray[i].mName != null ? meshArray[i].mName : "[null]";
-        let vertexCount = meshArray[i].mVertexes != null ? meshArray[i].mVertexes.length : "[null]";
-        let normalCount = meshArray[i].mNormals != null ? meshArray[i].mNormals.length : "[null]";
-        let coordCount  = meshArray[i].mCoordinates != null ? meshArray[i].mCoordinates.length : "[null]";
-        let colorCount  = meshArray[i].mVertexColors != null ? meshArray[i].mVertexColors.length : "[null]";
-        let indiceCount = meshArray[i].mIndices != null ? meshArray[i].mIndices.length : "[null]";
-        console.log("[JSONModelInfo]     #" + i + " name:'" + name + "' vertex:" + vertexCount + " normal:" + normalCount + " coordinate:" + coordCount + " color:" + colorCount + " indice:" + indiceCount);
+        let name         = meshArray[i].mName         != null ? meshArray[i].mName                : "[null]";
+        let vertexCount  = meshArray[i].mVertexes     != null ? meshArray[i].mVertexes.length     : "[null]";
+        let normalCount  = meshArray[i].mNormals      != null ? meshArray[i].mNormals.length      : "[null]";
+        let coordCount   = meshArray[i].mCoordinates  != null ? meshArray[i].mCoordinates.length  : "[null]";
+        let colorCount   = meshArray[i].mVertexColors != null ? meshArray[i].mVertexColors.length : "[null]";
+        let indiceCount  = meshArray[i].mIndices      != null ? meshArray[i].mIndices.length      : "[null]";
+        let drawMode     = meshArray[i].mDrawMode     != null ? meshArray[i].mDrawMode            : "[null]";
+        let drawProgram  = meshArray[i].mDrawProgram  != null ? meshArray[i].mDrawProgram         : "[null]";
+        let drawMaterial = meshArray[i].mDrawMaterial != null ? meshArray[i].mDrawMaterial        : "[null]";
+        console.log("[JSONModelInfo]     #" + i + " name:'" + name + "'");
+        console.log("[JSONModelInfo]        mesh:{vertex:" + vertexCount + " normal:" + normalCount + " coordinate:" + coordCount + " color:" + colorCount + " indice:" + indiceCount + "}");
+        console.log("[JSONModelInfo]        drawing:{mode:" + drawMode + " program:'" + drawProgram + "' material:'" + drawMaterial + "'}");
       }
     }
 
@@ -80,10 +52,42 @@ class Model {
         console.log("[JSONModelInfo]     #" + i + " [null]");
       } else {
         let name         = materialArray[i].mName != null ? meshArray[i].mName : "[null]";
-        let diffuse      = materialArray[i].mDiffuse;
-        let diffuseColor = (diffuse != null && diffuse.mColor != null) ? new GLColor(diffuse.mColor).toHexColor() : "[null]";
-        let diffuseMap   = (diffuse != null && diffuse.mTexture != null) ? diffuse.mTexture : "[null]";
-        console.log("[JSONModelInfo]     #" + i + " name:'" + name + "' diffuse:{color:" + diffuseColor + " texture:'" + diffuseMap + "'}");
+        let colorArray   = materialArray[i].mColors;
+        let textureArray = materialArray[i].mTextures;
+        let colorCount   = colorArray   != null ? colorArray.length   : "0";
+        let textureCount = textureArray != null ? textureArray.length : "0";
+
+        console.log("[JSONModelInfo]     #" + i + " name:'" + name + "'\r\n");
+        console.log("[JSONModelInfo]        colors: " + colorCount + " {\r\n");
+        for (let j = 0; j < colorArray.length; j++) {
+          let color      = colorArray[j];
+          let colorName  = color.mName  != null ? color.mName : "[null]";
+          let colorValue = color.mColor != null ? new GLColor(color.mColor).toHexColor() : "[null]";
+          console.log("[JSONModelInfo]          #" + j + " name:" + colorName + "' color:" + colorValue + "\r\n");
+        }
+        console.log("[JSONModelInfo]        }\r\n");
+
+        console.log("[JSONModelInfo]        textures: " + colorCount + " {\r\n");
+        for (let k = 0; k < textureArray.length; k++) {
+          let texture      = textureArray[k];
+          let textureName  = texture.mName    != null ? texture.mName    : "[null]";
+          let textureValue = texture.mTexture != null ? texture.mTexture : "[null]";
+          console.log("[JSONModelInfo]          #" + k + " name:" + textureName + "' textureValue:" + textureValue + "\r\n");
+        }
+        console.log("[JSONModelInfo]        }\r\n");
+      }
+    }
+
+    console.log("[JSONModelInfo]   Program: " + programCount);
+    for (let i = 0; i < programCount; i++) {
+      if (programArray[i] == null) {
+        console.log("[JSONModelInfo]     #" + i + " [null]");
+      } else {
+        let name           = programArray[i].mName != null ? programArray[i].mName : "[null]";
+        let argumentCount  = programArray[i].mExportArguments != null ? programArray[i].mExportArguments.length : 0;
+        let vertexShader   = programArray[i].mVertexShader != null ? (programArray[i].mVertexShader.length + "chars") : "[null]";
+        let fragmentShader = programArray[i].mFragmentShader != null ? (programArray[i].mFragmentShader.length + "chars") : "[null]";
+        console.log("[JSONModelInfo]     #" + i + " name:'" + name + "' arguments:" + argumentCount + " vertexShader:" + vertexShader + " fragmentShader:" + fragmentShader + "}");
       }
     }
 
@@ -91,15 +95,47 @@ class Model {
   } // #end printJSONModelInfo(json)
 
   constructor(name) {
-    this.mMeshes      = [];
-    this.mMaterials   = [];
-    this.mMeshBuffers = [];
-    this.mIsUploaded  = false;
-    this.mName        = name;
+    this.mMeshes          = [];
+    this.mMaterials       = new Map();
+    this.mPrograms        = new Map();
+    this.mMeshBuffers     = [];
+    this.mIsUploaded      = false;
+    this.mName            = name;
+
+    this.mTextureProvider = null;
   }
 
   addMesh(mesh) {
     this.mMeshes.push(mesh);
+  }
+
+  addMaterial(material) {
+    this.mMaterials.set(material.mName, material);
+  }
+
+  addProgram(program) {
+    this.mPrograms.set(program.mProgramName, program);
+  }
+
+  install(gl, textureProvider) {
+    // Meshes
+    for (let i = 0; i < this.mMeshes.length; i++) {
+      if (this.mMeshes[i] != null) {
+        this.mMeshes[i].upload(gl);
+      }
+    }
+
+    // Materials
+    for (let material of this.mMaterials.values()) {
+      material.upload(gl);
+    }
+
+    // Programs
+    for (let program of this.mPrograms.values()) {
+        program.install(gl);
+    }
+
+    this.mIsUploaded = true;
   }
 
   upload(gl) {
@@ -118,13 +154,18 @@ class Model {
   draw(gl, program) {
     for (let i = 0; i < this.mMeshes.length; i++) {
       if (this.mMeshes[i] != null) {
-        this.mMeshes[i].bind(gl);
-        // bind material
-        console.error("[draw] TODO implemente the Material binding and Program binding");
-        gl.drawArrays(this.mMeshes[i].getDrawMode(), 0, this.mMeshes[i].getVertexCount());
+        let mesh     = this.mMeshes[i];
+        let material = this.mMaterials.get(mesh.mDrawMaterialName);
+        let program  = this.mPrograms.get(mesh.mDrawProgramName);
+
+        if (mesh != null) {
+          mesh.bind(gl);
+          if (material) material.bind(gl);
+          if (program) program.setup(gl, mesh, material);
+          gl.drawArrays(mesh.getDrawMode(), 0, mesh.getVertexCount());
+        }
       }
     }
   }
-
 
 }

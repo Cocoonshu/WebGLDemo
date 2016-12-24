@@ -1,20 +1,13 @@
 'use strict'
 
-var imageProgram = {
-  "mProgramName" : "ImageProgram",
-  "mShaderArray" : [
-    {"mShaderID" : "base_vs"},
-    {"mShaderID" : "base_fs"}
-  ],
-  "mProgram" : null
-};
-
 var imageModel = {
   "mName" : "ImageBorad",
   "mMesh" : [
     {
       "mName" : "#1",
       "mDrawMode" : "TRIANGLES",
+      "mDrawProgram" : "diffuseTexture",
+      "mDrawMaterial" : "diffuseTexture",
       "mVertexes" : [
         -0.5, -0.5, 0,
         +0.5, -0.5, 0,
@@ -47,11 +40,38 @@ var imageModel = {
 
   "mMaterials" : [
     {
-      "mName" : "#1",
-      "mDiffuse" : {
-        "mColor" : [1.0, 1.0, 1.0, 1.0],
-        "mTexture" : "http://imglf1.ph.126.net/-3lep3TrVOKH0mgQEnc9rw==/6630489422582399713.jpg"
-      }
+      "mName" : "diffuseTexture",
+      "mColors" : [
+        {
+          "mName" : "filterColor",
+          "mColor" : [1.0, 1.0, 1.0, 1.0],
+        }
+      ],
+      "mTextures" : [
+        {
+          "mName" : "diffuse",
+          "mTexture" : "http://imglf1.ph.126.net/-3lep3TrVOKH0mgQEnc9rw==/6630489422582399713.jpg"
+        }
+      ]
+    }
+  ],
+
+  "mPrograms" : [
+    {
+      "mName" : "diffuseTexture",
+      "mExportArguments" : [
+        {"mType" : "uniform",   "mName" : "uMatModelView",   "mBinder" : "MVMatrix"}, // implicitly and default, MVMatrix is a constant
+        {"mType" : "uniform",   "mName" : "uMatProjection",  "mBinder" : "PMatrix"},  // implicitly and default, PMatrix is a constant
+
+        {"mType" : "attribute", "mName" : "aPosition",       "mBinder" : "mVertexes"},
+        {"mType" : "attribute", "mName" : "aNormal",         "mBinder" : "mNormals"},
+        {"mType" : "attribute", "mName" : "aCoordinate",     "mBinder" : "mCoordinates"},
+        {"mType" : "attribute", "mName" : "aVertexColor",    "mBinder" : "mVertexColors"},
+        {"mType" : "uniform",   "mName" : "uDiffuseColor",   "mBinder" : "Color::filterColor"},
+        {"mType" : "uniform",   "mName" : "uDiffuseSampler", "mBinder" : "Texture::diffuse"}
+      ],
+      "mVertexShader" : "attribute vec3 aPosition; attribute vec3 aNormal; attribute vec4 aVertexColor; attribute vec2 aCoordinate; uniform mat4 uMatModelView; uniform mat4 uMatProjection; varying highp vec2 vTextureCoord; void main(void) {gl_Position = uMatProjection * uMatModelView * vec4(aPosition, 1.0); vTextureCoord = aCoordinate;}",
+      "mFragmentShader" : "varying highp vec2 vTextureCoord; uniform sampler2D uDiffuseSampler; uniform highp vec4 uDiffuseColor; void main(void) {gl_FragColor = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));}"
     }
   ]
 };
@@ -68,9 +88,7 @@ var imageModel = {
 class GLImageView extends GLCanvas {
   constructor(glView) {
     super(glView);
-
-    this.mImagePlane = null;
-    this.mModel      = null;
+    this.mModel = null;
   }
 
   onGLCreated() {
@@ -79,13 +97,8 @@ class GLImageView extends GLCanvas {
 
   onGLResourcesLoading() {
     console.log("@@ [onGLResourcesLoading]");
-    imageProgram.mProgram = this.loadShaderProgram(imageProgram);
-
     this.mModel = Model.loadFromJSON(imageModel);
-    this.mModel.upload(this.getGL());
-
-    this.mImagePlane = new ImagePlane();
-    this.mImagePlane.upload(this.getGL());
+    this.mModel.install(this.getGL(), null);
   }
 
   onGLResize(width, height) {
@@ -95,7 +108,6 @@ class GLImageView extends GLCanvas {
   onDrawFrame(time, deltaTime) {
     console.log("@@ [onDrawFrame]");
     let gl = this.getGL();
-    this.mImagePlane.draw(gl);
     this.mModel.draw(gl);
   }
 
