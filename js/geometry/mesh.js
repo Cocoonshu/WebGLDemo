@@ -1,7 +1,8 @@
 'use strict'
 
-class Mesh {
+class Mesh extends Binderer {
   constructor() {
+    super();
     this.mName              = null;
     this.mDrawMode          = null;
     this.mDrawModeName      = null;
@@ -18,6 +19,13 @@ class Mesh {
     this.mNormalBuffer      = null;
     this.mCoordBuffer       = null;
     this.mVertexColorBuffer = null;
+
+    this.mBinderMap = [
+      {key:"mVertexes",     value:this.mVertexBuffer},
+      {key:"mNormals",      value:this.mNormalBuffer},
+      {key:"mCoordinates",  value:this.mCoordBuffer},
+      {key:"mVertexColors", value:this.mVertexColorBuffer}
+    ];
   }
 
   setName(name) {
@@ -142,28 +150,50 @@ class Mesh {
     this.mCoordBuffer       = this.buildCoordinateBuffer(gl);
     this.mVertexColorBuffer = this.buildVertexColorBuffer(gl);
     this.mDrawMode          = this.parseDrawModeString(gl);
+    this.mBinderMap         = [
+      {key:"mVertexes",     value:this.mVertexBuffer},
+      {key:"mNormals",      value:this.mNormalBuffer},
+      {key:"mCoordinates",  value:this.mCoordBuffer},
+      {key:"mVertexColors", value:this.mVertexColorBuffer}
+    ];
   }
 
-  bind(gl, vertexSlot, normalSlot, coordSlot, vertexColorSlot) {
-    if (this.mVertexBuffer != null && vertexSlot != 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.mVertexBuffer);
-      gl.enableVertexAttribArray(vertexSlot);
-      gl.vertexAttribPointer(vertexSlot, 3, gl.FLOAT, false, 0, 0);
+  bind(gl, slotName, slotBinderValue) {
+    if (gl == null || slotName == 0 || slotBinderValue == null) {
+      return false;
     }
-    if (this.mNormalBuffer != null && normalSlot != 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.mNormalBuffer);
-      gl.enableVertexAttribArray(normalSlot);
-      gl.vertexAttribPointer(normalSlot, 3, gl.FLOAT, false, 0, 0);
-    }
-    if (this.mCoordBuffer != null && coordSlot != 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.mCoordBuffer);
-      gl.enableVertexAttribArray(coordSlot);
-      gl.vertexAttribPointer(coordSlot, 2, gl.FLOAT, false, 0, 0);
-    }
-    if (this.mVertexColorBuffer != null && vertexColorSlot != 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.mVertexColorBuffer);
-      gl.enableVertexAttribArray(vertexColorSlot);
-      gl.vertexAttribPointer(vertexColorSlot, 4, gl.FLOAT, false, 0, 0);
+
+    if (slotBinderValue == Mesh.BINDER_VERTEX) {
+      if (this.mVertexBuffer != null) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.mVertexBuffer);
+        gl.enableVertexAttribArray(slotName);
+        gl.vertexAttribPointer(slotName, 3, gl.FLOAT, false, 0, 0);
+      }
+      return true;
+    } else if (slotBinderValue == Mesh.BINDER_NORMAL) {
+      if (this.mNormalBuffer != null) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.mNormalBuffer);
+        gl.enableVertexAttribArray(slotName);
+        gl.vertexAttribPointer(slotName, 3, gl.FLOAT, false, 0, 0);
+      }
+      return true;
+    } else if (slotBinderValue == Mesh.BINDER_COORDINATE) {
+      if (this.mCoordBuffer != null) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.mCoordBuffer);
+        gl.enableVertexAttribArray(slotName);
+        gl.vertexAttribPointer(slotName, 2, gl.FLOAT, false, 0, 0);
+      }
+      return true;
+    } else if (slotBinderValue == Mesh.BINDER_VERTEXCOLOR) {
+      if (this.mVertexColorBuffer != null) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.mVertexColorBuffer);
+        gl.enableVertexAttribArray(slotName);
+        gl.vertexAttribPointer(slotName, 4, gl.FLOAT, false, 0, 0);
+      }
+      return true;
+    } else {
+      console.error("[Mesh] Binding '" + slotName + "' ...failed");
+      return false;
     }
   }
 
@@ -185,6 +215,15 @@ class Mesh {
       this.mVertexColorBuffer = null;
     }
   }
+
+  getBinder(gl, binder) {
+    for (let i = 0; i < this.mBinderMap.length; i++) {
+      if (binder == this.mBinderMap[i].key) {
+        return this.mBinderMap[i].value;
+      }
+    }
+    return null;
+  }
 }
 
 Mesh.MODE_POINTS         = "POINTS";
@@ -194,3 +233,7 @@ Mesh.MODE_LINE_STRIP     = "LINE_STRIP";
 Mesh.MODE_TRANGLES       = "TRIANGLES";
 Mesh.MODE_TRIANGLE_STRIP = "TRIANGLE_STRIP";
 Mesh.MODE_TRIANGLE_FAN   = "TRIANGLE_FAN";
+Mesh.BINDER_VERTEX       = "mVertexes";
+Mesh.BINDER_NORMAL       = "mNormals";
+Mesh.BINDER_COORDINATE   = "mCoordinates";
+Mesh.BINDER_VERTEXCOLOR  = "mVertexColors";

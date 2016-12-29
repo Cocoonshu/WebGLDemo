@@ -50,7 +50,22 @@ var imageModel = {
       "mTextures" : [
         {
           "mName" : "diffuse",
+          "mType" : "2D",
+          "mMipMap" : 0,
           "mTexture" : "http://imglf1.ph.126.net/-3lep3TrVOKH0mgQEnc9rw==/6630489422582399713.jpg"
+        },
+        {
+          "mName" : "sky",
+          "mType" : "CubeMap",
+          "mMipMap" : 0,
+          "mTexture" : {
+            "NegetiveX" : "",
+            "NegetiveY" : "",
+            "NegetiveZ" : "",
+            "PositiveX" : "",
+            "PositiveY" : "",
+            "PositiveZ" : ""
+          }
         }
       ]
     }
@@ -71,13 +86,14 @@ var imageModel = {
         {"mType" : "uniform",   "mName" : "uDiffuseSampler", "mBinder" : "Texture::diffuse"}
       ],
       "mVertexShader" : "attribute vec3 aPosition; attribute vec3 aNormal; attribute vec4 aVertexColor; attribute vec2 aCoordinate; uniform mat4 uMatModelView; uniform mat4 uMatProjection; varying highp vec2 vTextureCoord; void main(void) {gl_Position = uMatProjection * uMatModelView * vec4(aPosition, 1.0); vTextureCoord = aCoordinate;}",
-      "mFragmentShader" : "varying highp vec2 vTextureCoord; uniform sampler2D uDiffuseSampler; uniform highp vec4 uDiffuseColor; void main(void) {gl_FragColor = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));}"
+      "mFragmentShader" : "varying highp vec2 vTextureCoord; uniform sampler2D uDiffuseSampler; uniform highp vec4 uDiffuseColor; void main(void) {gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0) * texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));}"
     }
   ]
 };
 
 /**
- *
+ * For implicitly
+ * {"mType" : "uniform",   "mName" : "uMatModelView",   "mBinder" : "MVMatrix",  mBinderValue:null}
  */
 
 
@@ -98,7 +114,7 @@ class GLImageView extends GLCanvas {
   onGLResourcesLoading() {
     console.log("@@ [onGLResourcesLoading]");
     this.mModel = Model.loadFromJSON(imageModel);
-    this.mModel.install(this.getGL(), null);
+    this.mModel.install(this.getGL(), this.getTextureProvider());
   }
 
   onGLResize(width, height) {

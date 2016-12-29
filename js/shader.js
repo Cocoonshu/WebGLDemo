@@ -170,7 +170,7 @@ class Shader {
     }
   } // #end loadShader(gl, type, source)
 
-  install(gl) {
+  install(gl, mesh, material) {
     this.mProgram = this.loadProgram(gl);
     this.mShaderArguments.clear();
 
@@ -180,6 +180,7 @@ class Shader {
       for (let i = 0; i < exportArgumentSize; i++) {
         let argument = this.mShaderExportArguments[i];
         if (argument != null) {
+          // Location argument in shader program
           switch (argument.mType) {
             case Shader.TYPE_ATTRIB: {
               console.log("[Shader] Attribute '" + argument.mName + "' install ...OK");
@@ -193,6 +194,30 @@ class Shader {
               this.mShaderArguments.set(argument.mName, location);
             } break;
           }
+
+          // Location argument binder
+          let binder = argument.mBinder;
+          if (binder == Shader.PRESET_MMAT
+           || binder == Shader.PRESET_VMAT
+           || binder == Shader.PRESET_PMAT
+           || binder == Shader.PRESET_MVMAT
+           || binder == Shader.PRESET_MVPMAT) {
+             // Dynamic binding during rendering
+            continue;
+          } else {
+            let locationBinder = null;
+            locationBinder = mesh.getBinder(gl, binder);
+            locationBinder = locationBinder == null ?  material.getBinder(gl, binder) : locationBinder;
+            if (locationBinder != null) {
+              argument.mBinderValue = locationBinder;
+              console.log("[Shader] argument '" + argument.mName + "' binding ...OK");
+            } else {
+              argument.mBinderValue = null;
+              console.error("[Shader] argument '" + argument.mName + "' binding ...failed");
+            }
+          }
+
+
         }
       }
     }
@@ -201,12 +226,82 @@ class Shader {
   setup(gl, mesh, material, transform) {
     gl.useProgram(this.mProgram);
 
-    // Exported arguments assignment
-    console.error("[Shader] Exported arguments assignment umimplemented");
+    // User defined shader arguments
+    let MVPMatrixFlags = 0;
+    let textureUnit    = 0;
     for (let i = 0; i < this.mShaderExportArguments.length; i++) {
         let argument = this.mShaderExportArguments[i];
+        if (argument == null) {
+          continue;
+        } else {
+          let location     = this.mShaderArguments.get(argument.mName);
+          let argumentName = argument.mName;
+          let shaderType   = argument.mType;
+          let binder       = argument.mBinder;
+          let value        = argument.mBinderValue;
 
+          if (binder == Shader.PRESET_MMAT) {
+            MVPMatrixFlags |= 0b100;
+
+          } else if (binder == Shader.PRESET_VMAT) {
+            MVPMatrixFlags |= 0b010;
+
+          } else if (binder == Shader.PRESET_PMAT) {
+            MVPMatrixFlags |= 0b001;
+
+          } else if (binder == Shader.PRESET_MVMAT) {
+            MVPMatrixFlags |= 0b110;
+
+          } else if (binder == Shader.PRESET_MVPMAT) {
+            MVPMatrixFlags |= 0b111;
+
+          } else {
+            {{{ ///////////////// Shader argument assignment /////////////////
+              if (value != null && value != undefined) {
+                if (binder.startsWith(Shader.PRESET_COLOR_ASSET)) {
+                  // Color
+                  if (argument.mType == Shader.TYPE_ATTRIB) {
+                    gl.enableVertexAttribArray(location);
+                    gl.vertexAttribPointer(location, 4, gl.FLOAT, false, 0, value.toFloatArray());
+                    console.log("[Shader] Assign attrib color " + argumentName + " ...OK");
+                  } else if (argument.mType == Shader.TYPE_UNIFORM) {
+                    gl.uniform4fv(location, value.toFloatArray());
+                    console.log("[Shader] Assign uniform color " + argumentName + " ...OK");
+                  }
+                } else if (argument.mBinder.startsWith(Shader.PRESET_TEXTURE_ASSET)) {
+                  // Texture
+                  value.bindTexture(gl, textureUnit);
+                  gl.uniform1i(location, textureUnit);
+                  console.log("[Shader] Assign texture " + argumentName + " ...OK");
+
+                  textureUnit++;
+                } else {
+                  if (binder != null) {
+                    if (!mesh.bind(gl, argumentName, binder)
+                     && !material.bind(gl, argumentName, binder)) {
+                      // mBinderValue isn't null
+                      console.log("[Shader] Assign '" + argumentName + "' ...umimplemented");
+                    }
+                  }
+                }
+              }
+            }}} ///////////////// Shader argument assignment /////////////////
+          }
+
+        }
     }
+
+    // Default shader arguments: MMatrix VMatrix PMatrix
+    if (MVPMatrixFlags & 0b100 == 0) {
+      // TODO
+    }
+    if (MVPMatrixFlags & 0b010 == 0) {
+      // TODO
+    }
+    if (MVPMatrixFlags & 0b001 == 0) {
+      // TODO
+    }
+    MVPMatrixFlags = 0;
   }
 
 }
@@ -218,8 +313,10 @@ Shader.FRAGMENT_TYPE        = "fragment";
 Shader.TYPE_UNIFORM         = "uniform";
 Shader.TYPE_ATTRIB          = "attribute";
 Shader.TYPE_VARYING         = "varying";
+Shader.PRESET_MMAT          = "MMatrix";
+Shader.PRESET_VMAT          = "PMatrix";
+Shader.PRESET_PMAT          = "VMatrix";
 Shader.PRESET_MVMAT         = "MVMatrix";
-Shader.PRESET_PMAT          = "PMatrix";
 Shader.PRESET_MVPMAT        = "MVPMatrix";
 Shader.PRESET_COLOR_ASSET   = "Color::";
 Shader.PRESET_TEXTURE_ASSET = "Texture::";

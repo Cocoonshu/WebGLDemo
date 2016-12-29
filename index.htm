@@ -29,11 +29,13 @@
       }
     </script>
 
+    <script src="js/binderer.js"></script>
     <script src="js/geometry/mesh.js"></script>
     <script src="js/geometry/plane.js"></script>
     <script src="js/material/material.js"></script>
     <script src="js/material/texture.js"></script>
     <script src="js/material/glcolor.js"></script>
+    <script src="js/loader/textureprovider.js"></script>
     <script src="js/loader/shaderloader.js"></script>
     <script src="js/loader/modelloader.js"></script>
     <script src="js/model/model.js"></script>
@@ -73,5 +75,6 @@
   </head>
   <body onload="onGLCanvasCreate('GLCanvas'); setup();" onunload="onGLCanvasDestoryed()" onresize="onGLCanvasResize()">
     <canvas id="GLCanvas" style="border:no-border;color:#FF0000;">WebGL isn't supported!</canvas>
+    <image id="ImgTest" src="http://imglf1.ph.126.net/-3lep3TrVOKH0mgQEnc9rw==/6630489422582399713.jpg" />
   </body>
 </html>

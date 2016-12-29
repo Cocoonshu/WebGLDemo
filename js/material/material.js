@@ -1,7 +1,8 @@
 'use strict'
 
-class Material {
+class Material extends Binderer {
   constructor(name) {
+    super();
     this.mName       = name;
     this.mColorSet   = new Map();
     this.mTextureSet = new Map();
@@ -35,7 +36,36 @@ class Material {
     this.mTextureSet.clear();
   }
 
-  upload(gl) {}
+  attachTextureProvider(textureProvider) {
+    for (let texture of this.mTextureSet.values()) {
+      texture.attachTextureProvider(textureProvider);
+    }
+  }
 
-  bind(gl) {}
+  upload(gl) {
+    for (let texture of this.mTextureSet.values()) {
+      texture.updateTexture(gl);
+    }
+  }
+
+  getBinder(gl, binder) {
+    if (binder.startsWith(Material.KEY_COLOR)) {
+      let colorName = binder.substring(Material.KEY_COLOR.length, binder.length);
+      return this.mColorSet.get(colorName);
+    } else if (binder.startsWith(Material.KEY_TEXTURE)) {
+      let textureName = binder.substring(Material.KEY_TEXTURE.length, binder.length);
+      return this.mTextureSet.get(textureName);
+    } else {
+      return null;
+    }
+    return null;
+  }
+
+  bind(gl, slotName, slotBinderValue) {
+    console.warn("[Material] Binding method is not implemented yet");
+    return false;
+  }
 }
+
+Material.KEY_COLOR   = "Color::";
+Material.KEY_TEXTURE = "Texture::";

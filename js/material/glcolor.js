@@ -175,4 +175,12 @@ class GLColor {
     this.setIntColor(intAlpha, intRed, intGreen, intBlue);
   } // #end fromFloatArray(color)
 
+  toFloatArray() {
+    return [
+      this.getFloatRed(),
+      this.getFloatGreen(),
+      this.getFloatBlue(),
+      this.getFloatAlpha()
+    ];
+  }
 }

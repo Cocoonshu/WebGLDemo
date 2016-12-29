@@ -117,22 +117,31 @@ class Model {
     this.mPrograms.set(program.mProgramName, program);
   }
 
-  install(gl, textureProvider) {
-    // Meshes
-    for (let i = 0; i < this.mMeshes.length; i++) {
-      if (this.mMeshes[i] != null) {
-        this.mMeshes[i].upload(gl);
-      }
-    }
+  attachTextureProvider(textureProvider) {
+    this.mTextureProvider = textureProvider;
+  }
 
+  install(gl, textureProvider) {
     // Materials
     for (let material of this.mMaterials.values()) {
+      material.attachTextureProvider(textureProvider);
       material.upload(gl);
     }
 
-    // Programs
-    for (let program of this.mPrograms.values()) {
-        program.install(gl);
+    // Meshes
+    for (let i = 0; i < this.mMeshes.length; i++) {
+      if (this.mMeshes[i] != null) {
+        let mesh     = this.mMeshes[i];
+        let material = this.mMaterials.get(mesh.mDrawMaterialName);
+        let program  = this.mPrograms.get(mesh.mDrawProgramName);
+
+        mesh.upload(gl);
+
+        // Programs
+        if (program != null) {
+          program.install(gl, mesh, material);
+        }
+      }
     }
 
     this.mIsUploaded = true;
@@ -159,9 +168,9 @@ class Model {
         let program  = this.mPrograms.get(mesh.mDrawProgramName);
 
         if (mesh != null) {
-          mesh.bind(gl);
-          if (material) material.bind(gl);
-          if (program) program.setup(gl, mesh, material);
+          if (program != null) {
+            program.setup(gl, mesh, material);
+          }
           gl.drawArrays(mesh.getDrawMode(), 0, mesh.getVertexCount());
         }
       }

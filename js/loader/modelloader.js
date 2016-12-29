@@ -34,13 +34,13 @@ class ModelLoader {
     }
 
     // Material
-    for (let i = 0; i < meshCount; i++) {
+    for (let i = 0; i < materialCount; i++) {
       if (materialArray[i] == null) {
         continue;
       } else {
         let material           = new Material();
-        let materialColorSet   = material.mColors;
-        let materialTextureSet = material.mTextures;
+        let materialColorSet   = materialArray[i].mColors;
+        let materialTextureSet = materialArray[i].mTextures;
         material.setName(materialArray[i].mName != null ? materialArray[i].mName : ("#" + i));
 
         // Color set
@@ -58,10 +58,12 @@ class ModelLoader {
         let materialTextureSize = materialTextureSet == null ? 0 : materialTextureSet.length;
         for (let k = 0; k < materialTextureSize; k++) {
           if (materialTextureSet[k].mTexture != null) {
-            material.addTexture(
-              materialTextureSet[j].mName != null ? materialTextureSet[j].mName : ("#" + k),
-              new Texture(materialTextureSet[j].mTexture)
-            );
+            let texureName  = materialTextureSet[k].mName != null ? materialTextureSet[k].mName : ("#" + k);
+            let textureType = materialTextureSet[k].mType;
+            let texture     = new Texture(materialTextureSet[k].mTexture);
+            texture.setName(texureName);
+            texture.setTypeName(textureType);
+            material.addTexture(texureName, texture);
           }
         }
 

@@ -33,12 +33,14 @@ function checkGLEvnvirnment() {
   };
 
   // GLColor
+  isAllOk &= classChecker(Binderer);
   isAllOk &= classChecker(Shader);
   isAllOk &= classChecker(GLColor, 0);
   isAllOk &= classChecker(Material);
   isAllOk &= classChecker(Texture);
   isAllOk &= classChecker(Mesh);
   isAllOk &= classChecker(Model);
+  isAllOk &= classChecker(TextureProvider);
   isAllOk &= classChecker(ShaderLoader);
   isAllOk &= classChecker(ModelLoader);
   isAllOk &= classChecker(Plane);
@@ -64,9 +66,10 @@ class GLCanvas {
       gl = glView.getContext('experimental-webgl');
       glView.glCanvas = this;
 
-      this.mGL         = gl;
-      this.mIsGLValid  = true;
-      this.mRenderTime = new Date().getTime();
+      this.mGL              = gl;
+      this.mTextureProvider = new TextureProvider();
+      this.mIsGLValid       = true;
+      this.mRenderTime      = new Date().getTime();
       console.log('[GLCanvas] create GLCanvas instance');
     } catch (exp) {
       console.error("WebGL isn't support!");
@@ -125,6 +128,10 @@ class GLCanvas {
 
   getGL() {
     return this.mGL;
+  }
+
+  getTextureProvider() {
+    return this.mTextureProvider;
   }
 
   glCreated() {
