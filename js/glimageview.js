@@ -52,8 +52,8 @@ var imageModel = {
           "mName" : "diffuse",
           "mType" : "2D",
           "mMipMap" : 0,
-          "mTexture" : "http://imglf1.ph.126.net/-3lep3TrVOKH0mgQEnc9rw==/6630489422582399713.jpg"
-        },
+          "mTexture" : "img/6630489422582399713.jpg"
+        }/*,
         {
           "mName" : "sky",
           "mType" : "CubeMap",
@@ -66,7 +66,7 @@ var imageModel = {
             "PositiveY" : "",
             "PositiveZ" : ""
           }
-        }
+        }*/
       ]
     }
   ],

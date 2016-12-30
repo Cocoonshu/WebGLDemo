@@ -18,9 +18,11 @@ class TextureTask {
         }
       };
 
-      this.mImage        = new Image();
-      this.mImage.onload = onLoadHandler;
-      this.mImage.src    = this.mTexture.mTextureUrl;
+      this.mImage             = new Image();
+      this.mImage.onload      = onLoadHandler;
+      this.mImage.crossOrigin = "";
+      this.mImage.src         = this.mTexture.mTextureUrl;
+      console.log("[TextureProvider] Image '" + this.mImage.src + "' loading...");
     }
   }
 }

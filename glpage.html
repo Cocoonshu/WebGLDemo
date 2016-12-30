@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <title>WebGL</title>
+    <script type="x-shader/x-vertex" id="base_vs">
+      precision highp float;
+      attribute vec3 aPosition;
+      attribute vec3 aNormal;
+      attribute vec4 aVertexColor;
+      attribute vec2 aCoordinate;
+      uniform   mat4 uMatModelView;
+      uniform   mat4 uMatProjection;
+      varying   vec2 vTextureCoord;
+      varying   vec4 uDiffuseColor;
+
+      void main(void) {
+        gl_Position   = vec4(aPosition, 1.0);
+        vTextureCoord = aCoordinate;
+        uDiffuseColor = aVertexColor;
+      }
+    </script>
+    <script type="x-shader/x-fragment" id="base_fs">
+      precision highp float;
+      varying  vec2      vTextureCoord;
+      uniform  sampler2D uDiffuseSampler;
+      uniform  vec4      uDiffuseColor;
+
+      void main(void) {
+        gl_FragColor = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+      }
+    </script>
+    <script>
+      var glView           = null;
+      var gl               = null;
+      var glProgram        = null;
+      var indexPosition    = null;
+      var indexCoordinate  = null;
+      var vertexBuffer     = null;
+      var coordinateBuffer = null;
+      var image            = null;
+      var texture          = null;
+
+      function ShaderSourceFromScript(scriptID) {
+        var shaderScript = document.getElementById(scriptID);
+        if (shaderScript == null) return "";
+
+        var sourceCode = "";
+        var child = shaderScript.firstChild;
+        while (child) {
+            if (child.nodeType == child.TEXT_NODE ) sourceCode += child.textContent;
+            child = child.nextSibling;
+        }
+
+        return sourceCode;
+      }
+
+      function onGLCanvasCreate() {
+        console.log("[onGLCanvasCreate]");
+        glView = document.getElementById('GLCanvas');
+        gl     = glView.getContext('experimental-webgl');
+
+        {// Shader
+          console.log("[onGLCanvasCreate] initialize shaders");
+          let vertexShaderSource   = ShaderSourceFromScript('base_vs');
+          let fragmentShaderSource = ShaderSourceFromScript('base_fs');
+          let vertexShader         = gl.createShader(gl.VERTEX_SHADER);
+          let fragmentShader       = gl.createShader(gl.FRAGMENT_SHADER);
+          let shaderProgram        = gl.createProgram();
+
+          gl.shaderSource(vertexShader, vertexShaderSource);
+          gl.compileShader(vertexShader);
+          if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+            console.error("[loadShader] compile vertex shader ...Failed");
+            console.error("[loadShader] " + gl.getShaderInfoLog(vertexShader));
+            return;
+          }
+
+          gl.shaderSource(fragmentShader, fragmentShaderSource);
+          gl.compileShader(fragmentShader);
+          if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+            console.error("[loadShader] compile fragment shader ...Failed");
+            console.error("[loadShader] " + gl.getShaderInfoLog(fragmentShader));
+            return;
+          }
+
+          gl.attachShader(shaderProgram, vertexShader);
+          gl.attachShader(shaderProgram, fragmentShader);
+          gl.linkProgram(shaderProgram);
+          if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            console.error("[loadProgram] link program ...Failed");
+            console.error("[loadProgram] " + gl.getProgramInfoLog(shaderProgram));
+            return;
+          }
+          glProgram       = shaderProgram;
+          indexPosition   = gl.getAttribLocation(glProgram, 'aPosition');
+          indexCoordinate = gl.getAttribLocation(glProgram, 'aCoordinate');
+          console.log("[loadProgram] mapping 'aPosition' as " + indexPosition);
+          console.log("[loadProgram] mapping 'aCoordinate' as " + indexCoordinate);
+        }
+
+        {// Mesh
+          let scale = 10;
+
+          console.log("[onGLCanvasCreate] initialize meshes");
+          vertexBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -0.5, -0.5, 0,
+            +0.5, -0.5, 0,
+            -0.5, +0.5, 0,
+            +0.5, +0.5, 0
+          ]), gl.STATIC_DRAW);
+
+          coordinateBuffer = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, coordinateBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            0.0, 1.0,
+            1.0, 1.0,
+            0.0, 0.0,
+            1.0, 0.0
+          ]), gl.STATIC_DRAW);
+        }
+
+        {// texture
+          console.log("[onGLCanvasCreate] initialize textures");
+          image = document.getElementById('Image');
+          texture = gl.createTexture();
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        }
+
+        {// Initialize
+          console.log("[onGLCanvasCreate] initialize glcontext");
+          gl.clearColor(1.0, 1.0, 0.0, 1.0);
+          gl.clearDepth(1.0);
+        }
+      }
+
+      function onDrawFrame() {
+        console.log("[onDrawFrame]");
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.useProgram(glProgram);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.enableVertexAttribArray(indexPosition);
+        gl.vertexAttribPointer(indexPosition, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, coordinateBuffer);
+        gl.enableVertexAttribArray(indexCoordinate);
+        gl.vertexAttribPointer(indexCoordinate, 2, gl.FLOAT, false, 0, 0);
+
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        //gl.drawElements(gl.TRIANGLE_STRIP, 4, gl.FLOAT, [0, 1, 2, 3]);
+      }
+
+      function onGLCanvasDestoryed() {
+        console.log("[onGLCanvasDestoryed]");
+
+        gl.disableVertexAttribArray(indexPosition);
+        gl.deleteBuffer(vertexBuffer);
+        indexPosition = null;
+        vertexBuffer  = null;
+
+        gl.disableVertexAttribArray(indexCoordinate);
+        gl.deleteBuffer(coordinateBuffer);
+        indexCoordinate  = null;
+        coordinateBuffer = null;
+      }
+
+      function onGLCanvasResize() {
+        let width  = glView.clientWidth;
+        let height = glView.clientHeight;
+        console.log("[onGLCanvasResize] size = (" + width + ", " + height + ")");
+        gl.viewport(0, 0, width, height);
+      }
+    </script>
+  </head>
+  <body onload="onGLCanvasCreate();onGLCanvasResize();onDrawFrame();" onunload="onGLCanvasDestoryed();" onresize="onGLCanvasResize();onDrawFrame();" onmousemove="onDrawFrame();">
+    <canvas id="GLCanvas" style="border:no-border;color:#FF0000;width:100%;height:100%">WebGL isn't supported!</canvas>
+    <image id="Image" src="img/6630489422582399713.jpg" crossOrigin=""/>
+  </body>
+</html>

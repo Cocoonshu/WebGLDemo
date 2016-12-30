@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
@@ -60,7 +60,7 @@
 
       function onGLCanvasResize() {
         if (glView != null && glCanvas != null) {
-          glCanvas.resize(glView.width, glView.height);
+          glCanvas.resize(glView.clientWidth, glView.clientHeight);
         }
       }
 
@@ -75,6 +75,5 @@
   </head>
   <body onload="onGLCanvasCreate('GLCanvas'); setup();" onunload="onGLCanvasDestoryed()" onresize="onGLCanvasResize()">
     <canvas id="GLCanvas" style="border:no-border;color:#FF0000;">WebGL isn't supported!</canvas>
-    <image id="ImgTest" src="http://imglf1.ph.126.net/-3lep3TrVOKH0mgQEnc9rw==/6630489422582399713.jpg" />
   </body>
 </html>
