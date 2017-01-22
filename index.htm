@@ -73,7 +73,9 @@
       }
     </script>
   </head>
-  <body onload="onGLCanvasCreate('GLCanvas'); setup();" onunload="onGLCanvasDestoryed()" onresize="onGLCanvasResize()">
-    <canvas id="GLCanvas" style="border:no-border;color:#FF0000;">WebGL isn't supported!</canvas>
+  <body onload="onGLCanvasCreate('GLCanvas'); setup();"
+        onunload="onGLCanvasDestoryed()"
+        onresize="onGLCanvasResize()">
+    <canvas id="GLCanvas" style="border:no-border;color:#FF0000;width:100%;height:100%">WebGL isn't supported!</canvas>
   </body>
 </html>

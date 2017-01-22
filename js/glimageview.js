@@ -114,7 +114,7 @@ class GLImageView extends GLCanvas {
   onGLResourcesLoading() {
     console.log("@@ [onGLResourcesLoading]");
     this.mModel = Model.loadFromJSON(imageModel);
-    this.mModel.install(this.getGL(), this.getTextureProvider());
+    this.mModel.install(this.getGL(), this.getTextureProvider(), this.requestRender);
   }
 
   onGLResize(width, height) {

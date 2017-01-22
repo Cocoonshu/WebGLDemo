@@ -3,9 +3,10 @@
 class Material extends Binderer {
   constructor(name) {
     super();
-    this.mName       = name;
-    this.mColorSet   = new Map();
-    this.mTextureSet = new Map();
+    this.mName         = name;
+    this.mColorSet     = new Map();
+    this.mTextureSet   = new Map();
+    this.mLoadListener = null;
   }
 
   setName(name) {
@@ -36,9 +37,23 @@ class Material extends Binderer {
     this.mTextureSet.clear();
   }
 
+  setLoadListener(listener) {
+    this.mLoadListener = listener;
+  }
+
   attachTextureProvider(textureProvider) {
+    let that = this;
     for (let texture of this.mTextureSet.values()) {
       texture.attachTextureProvider(textureProvider);
+      texture.setLoadListener(function(material) {
+        that.onMaterialUpdated(material);
+      });
+    }
+  }
+
+  onMaterialUpdated(material) {
+    if (this.mLoadListener != null) {
+      this.mLoadListener(material);
     }
   }
 

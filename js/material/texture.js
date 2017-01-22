@@ -9,6 +9,7 @@ class Texture {
       this.mTextureID       = Texture.InvalidID ;
       this.mTextureProvider = null;
       this.mMipMapLevel     = 0;
+      this.mLoadListener    = null;
   }
 
   setName(name) {
@@ -25,7 +26,20 @@ class Texture {
 
   attachTextureProvider(textureProvider) {
     this.mTextureProvider = textureProvider;
-    this.mTextureProvider.loadTexture(this);
+    this.requestLoadTexture();
+  }
+
+  setLoadListener(listener) {
+    this.mLoadListener = listener;
+  }
+
+  requestLoadTexture() {
+    let that = this;
+    this.mTextureProvider.loadTexture(this, function() {
+      if (that.mLoadListener != null) {
+        that.mLoadListener(that);
+      }
+    });
   }
 
   updateTexture(gl) {
@@ -59,15 +73,18 @@ class Texture {
           // gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, provider.getImage(textureProvider.PosZ));
         } else {
           gl.bindTexture(this.mType, textureID);
-          gl.texImage2D(this.mType, image);
+          gl.texImage2D(this.mType, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+          textureID.bindImageUrl = image.src;
         }
 
         if (this.mMipMapLevel > 0) {
-          gl.generateMipmap(this.mType);
+          // if The dimensions of image is not the power of 2, mipmap is not
+          // valiable to it
+          //gl.generateMipmap(this.mType);
         }
         this.mTextureID = textureID;
       } else {
-        this.mTextureProvider.loadTexture(this);
+        this.requestLoadTexture();
       }
     }
   }

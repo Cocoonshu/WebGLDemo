@@ -15,7 +15,7 @@
       varying   vec4 uDiffuseColor;
 
       void main(void) {
-        gl_Position   = vec4(aPosition, 1.0);
+        gl_Position   = vec4(aPosition * 2.0, 1.0);
         vTextureCoord = aCoordinate;
         uDiffuseColor = aVertexColor;
       }
@@ -24,22 +24,36 @@
       precision highp float;
       varying  vec2      vTextureCoord;
       uniform  sampler2D uDiffuseSampler;
+      uniform  sampler2D uOverlapSampler;
       uniform  vec4      uDiffuseColor;
+      uniform  float     uOverlapAlpha;
 
       void main(void) {
-        gl_FragColor = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        vec4 diffuse = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        vec4 overlap = texture2D(uOverlapSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        gl_FragColor = diffuse * (1.0 - uOverlapAlpha) + overlap * uOverlapAlpha;
       }
     </script>
     <script>
-      var glView           = null;
-      var gl               = null;
-      var glProgram        = null;
-      var indexPosition    = null;
-      var indexCoordinate  = null;
-      var vertexBuffer     = null;
-      var coordinateBuffer = null;
-      var image            = null;
-      var texture          = null;
+      var labelLoading           = null;
+      var glView                 = null;
+      var gl                     = null;
+      var glProgram              = null;
+      var indexPosition          = null;
+      var indexCoordinate        = null;
+      var indexDiffuseSampler    = null;
+      var indexOverlapSampler    = null;
+      var indexOverlapAlpha      = null;
+      var vertexBuffer           = null;
+      var coordinateBuffer       = null;
+      var image                  = null;
+      var textureDiffuse         = null;
+      var textureOverlap         = null;
+      var overlapAlphaRange      = [0.8, 0.2];
+      var finalOverlapAlpha      = overlapAlphaRange[0];
+      var currentOverlapAlpha    = overlapAlphaRange[0];
+      var overlapAnimationFactor = 0.05;
+      var overlapAnimationError  = 0.01;
 
       function ShaderSourceFromScript(scriptID) {
         var shaderScript = document.getElementById(scriptID);
@@ -57,16 +71,22 @@
 
       function onGLCanvasCreate() {
         console.log("[onGLCanvasCreate]");
-        glView = document.getElementById('GLCanvas');
-        gl     = glView.getContext('experimental-webgl');
+        labelLoading = document.getElementById("labelLoading");
+        glView       = document.getElementById('GLCanvas');
+        gl           = glView.getContext('experimental-webgl');
+
+        if (gl == null) {
+          labelLoading.style.color = "#FF1111";
+          labelLoading.innerHTML = "Error: WebGL isn't supported!";
+        }
 
         {// Shader
           console.log("[onGLCanvasCreate] initialize shaders");
-          let vertexShaderSource   = ShaderSourceFromScript('base_vs');
-          let fragmentShaderSource = ShaderSourceFromScript('base_fs');
-          let vertexShader         = gl.createShader(gl.VERTEX_SHADER);
-          let fragmentShader       = gl.createShader(gl.FRAGMENT_SHADER);
-          let shaderProgram        = gl.createProgram();
+          var vertexShaderSource   = ShaderSourceFromScript('base_vs');
+          var fragmentShaderSource = ShaderSourceFromScript('base_fs');
+          var vertexShader         = gl.createShader(gl.VERTEX_SHADER);
+          var fragmentShader       = gl.createShader(gl.FRAGMENT_SHADER);
+          var shaderProgram        = gl.createProgram();
 
           gl.shaderSource(vertexShader, vertexShaderSource);
           gl.compileShader(vertexShader);
@@ -92,16 +112,21 @@
             console.error("[loadProgram] " + gl.getProgramInfoLog(shaderProgram));
             return;
           }
-          glProgram       = shaderProgram;
-          indexPosition   = gl.getAttribLocation(glProgram, 'aPosition');
-          indexCoordinate = gl.getAttribLocation(glProgram, 'aCoordinate');
+          glProgram           = shaderProgram;
+          indexPosition       = gl.getAttribLocation(glProgram, 'aPosition');
+          indexCoordinate     = gl.getAttribLocation(glProgram, 'aCoordinate');
+          indexDiffuseSampler = gl.getUniformLocation(glProgram, 'uDiffuseSampler');
+          indexOverlapSampler = gl.getUniformLocation(glProgram, 'uOverlapSampler');
+          indexOverlapAlpha   = gl.getUniformLocation(glProgram, 'uOverlapAlpha');
+
           console.log("[loadProgram] mapping 'aPosition' as " + indexPosition);
           console.log("[loadProgram] mapping 'aCoordinate' as " + indexCoordinate);
+          console.log("[loadProgram] mapping 'uDiffuseSampler' as " + indexDiffuseSampler);
+          console.log("[loadProgram] mapping 'uOverlapSampler' as " + indexOverlapSampler);
+          console.log("[loadProgram] mapping 'uOverlapAlpha' as " + indexOverlapAlpha);
         }
 
         {// Mesh
-          let scale = 10;
-
           console.log("[onGLCanvasCreate] initialize meshes");
           vertexBuffer = gl.createBuffer();
           gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -124,11 +149,57 @@
 
         {// texture
           console.log("[onGLCanvasCreate] initialize textures");
-          image = document.getElementById('Image');
-          texture = gl.createTexture();
-          gl.activeTexture(gl.TEXTURE0);
-          gl.bindTexture(gl.TEXTURE_2D, texture);
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+          var images = [];
+
+          images.push(new Image());
+          images[0].src      = "img/6630489422582399713.jpg";
+          images[0].isLoaded = false;
+          images[0].onload   = function() {
+            images[0].isLoaded = true;
+            textureDiffuse = gl.createTexture();
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, textureDiffuse);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, images[0]);
+            onDrawFrame();
+
+            var progress = 0;
+            for (var i = 0; i < images.length; i++) {
+              if (images[i].isLoaded) {
+                progress += 1.0 / images.length;
+              }
+            }
+            labelLoading.innerHTML = "Loading..." + (progress * 100) + "%";
+          };
+
+          images.push(new Image());
+          images[1].src      = "img/20170112140302.png";
+          images[1].isLoaded = false;
+          images[1].onload   = function() {
+            images[1].isLoaded = true;
+            textureOverlap = gl.createTexture();
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, textureOverlap);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, images[1]);
+            onDrawFrame();
+
+            var progress = 0;
+            for (var i = 0; i < images.length; i++) {
+              if (images[i].isLoaded) {
+                progress += 1.0 / images.length;
+              }
+            }
+            labelLoading.innerHTML = "Loading..." + (progress * 100) + "%";
+          };
+
+          labelLoading.innerHTML = "Loading..." + (0) + "%";
         }
 
         {// Initialize
@@ -139,7 +210,19 @@
       }
 
       function onDrawFrame() {
+        if (textureDiffuse == null || textureOverlap == null) {
+          return;
+        }
         console.log("[onDrawFrame]");
+        {// Update animated part
+          currentOverlapAlpha = currentOverlapAlpha + (finalOverlapAlpha - currentOverlapAlpha) * overlapAnimationFactor;
+          if (Math.abs(currentOverlapAlpha - finalOverlapAlpha) > overlapAnimationError) {
+            requestAnimationFrame(onDrawFrame);
+          } else {
+            currentOverlapAlpha = finalOverlapAlpha;
+          }
+        }
+
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         gl.useProgram(glProgram);
@@ -152,13 +235,23 @@
         gl.enableVertexAttribArray(indexCoordinate);
         gl.vertexAttribPointer(indexCoordinate, 2, gl.FLOAT, false, 0, 0);
 
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, textureDiffuse);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(indexDiffuseSampler, 0); // 0 for Texture unit id
 
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, textureOverlap);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.uniform1i(indexOverlapSampler, 1); // 1 for Texture unit id
+
+        gl.uniform1f(indexOverlapAlpha, currentOverlapAlpha);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         //gl.drawElements(gl.TRIANGLE_STRIP, 4, gl.FLOAT, [0, 1, 2, 3]);
       }
@@ -178,15 +271,58 @@
       }
 
       function onGLCanvasResize() {
-        let width  = glView.clientWidth;
-        let height = glView.clientHeight;
+        var width  = glView.clientWidth;
+        var height = glView.clientHeight;
+
         console.log("[onGLCanvasResize] size = (" + width + ", " + height + ")");
         gl.viewport(0, 0, width, height);
+
+        // This following code is necessary
+        // Make sure that the canvas width and height match the pixel display size.
+        // The display size is set via the style width and height.
+        // Resolution is the number of pixels in the image.
+        // Display size is the amount of space that it occupies on the page.
+        // The two should match for the best results.
+        glView.width        = width;
+        glView.height       = height;
+        glView.style.width  = width;
+        glView.style.height = height;
+      }
+
+      function fadeInOverlap() {
+        finalOverlapAlpha = overlapAlphaRange[1];
+        requestRender();
+      }
+
+      function fadeOutOverlap() {
+        finalOverlapAlpha = overlapAlphaRange[0];
+        requestRender();
+      }
+
+      function requestRender() {
+        requestAnimationFrame(onDrawFrame);
       }
     </script>
   </head>
-  <body onload="onGLCanvasCreate();onGLCanvasResize();onDrawFrame();" onunload="onGLCanvasDestoryed();" onresize="onGLCanvasResize();onDrawFrame();" onmousemove="onDrawFrame();">
-    <canvas id="GLCanvas" style="border:no-border;color:#FF0000;width:100%;height:100%">WebGL isn't supported!</canvas>
-    <image id="Image" src="img/6630489422582399713.jpg" crossOrigin=""/>
+  <body style="border:no-border; margin:0%; position:relative; text-align:center"
+        onload="onGLCanvasCreate();onGLCanvasResize();requestRender();"
+        onunload="onGLCanvasDestoryed();"
+        onresize="onGLCanvasResize();requestRender();"
+        onmouseover="fadeInOverlap();"
+        onmouseout="fadeOutOverlap();">
+
+    <div id="labelLoading" style="position:absolute; text-align:center; left:0%; top:50%; width:100%; height:50%; color:#000000; font-family:arial, sans-serif; font-size:2em">
+      Loading...
+    </div>
+    <div style="position:relative; border:no-border; color:#FF0000; width:100%; height:100%; margin:0%">
+      <canvas id="GLCanvas" style="width:100%; height:100%;">WebGL isn't supported!</canvas>
+      <div style="position:absolute; left:0%; top:0%; margin:1em; color:#FFFFFF; font-family:arial, sans-serif; font-size:1.2em">
+        WebGL - MultiTexture
+      </div>
+      <div style="position:absolute; right:0%; bottom:0%; margin:1em; color:#FFFFFF; opacity:0.6; font-family:arial, sans-serif;  font-size:0.5em">
+        @Cocoonshu
+      </div>
+    </div>
+
   </body>
 </html>

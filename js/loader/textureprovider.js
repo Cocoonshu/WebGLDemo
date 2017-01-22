@@ -11,10 +11,14 @@ class TextureTask {
     if (this.mImage != null) {
       return;
     } else {
+      let that = this;
       let onLoadHandler = function() {
-        if (this.mListener != null) {
-          console.log("[TextureProvider] Image '" + this.mImage.src + "' has loaded");
-          this.mListener(this);
+        console.warn("[TextureProvider] Image '" + that.mImage.src + "' has loaded");
+        if (that.mListener != null) {
+          that.mListener(that);
+        }
+        if (onLoadedListener != null) {
+          onLoadedListener(that);
         }
       };
 
@@ -100,6 +104,7 @@ class TextureProvider {
       return;
     }
 
+    let that = this;
     let task = this.mTaskMap.get(texture);
     if (task != null) {
       return;
@@ -107,7 +112,9 @@ class TextureProvider {
       task = new TextureTask(texture, listener);
       this.mTaskMap.set(texture, task);
       this.mTaskList.push(task);
-      task.decode(this.onTaskDone);
+      task.decode(function(task){
+        that.onTaskDone(task);
+      });
     }
   }
 
@@ -120,17 +127,11 @@ class TextureProvider {
   }
 
   onTaskDone(task) {
-    let url   = task.mTexture.mUrl;
+    let url   = task.mTexture.mTextureUrl;
     let image = task.mImage;
     if (url != null && image != null) {
-      this.mImagePool.push(new TextureResource(url, image));
+      this.mImagePool.push(url, image);
     }
-
-    this.invalidateRenderer();
-  }
-
-  invalidateRenderer() {
-      // TODO
   }
 
 }

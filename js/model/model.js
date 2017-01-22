@@ -103,6 +103,7 @@ class Model {
     this.mName            = name;
 
     this.mTextureProvider = null;
+    this.mRenderRequester = null;
   }
 
   addMesh(mesh) {
@@ -121,10 +122,23 @@ class Model {
     this.mTextureProvider = textureProvider;
   }
 
-  install(gl, textureProvider) {
+  onResourceUpdated(resource) {
+    console.log("[onResourceUpdated] resource '" + resource + "' is updated")
+    if (this.mRenderRequester != null) {
+      this.mRenderRequester();
+    }
+  }
+
+  install(gl, textureProvider, requestRender) {
+    this.mRenderRequester = requestRender;
+
     // Materials
+    let that = this;
     for (let material of this.mMaterials.values()) {
       material.attachTextureProvider(textureProvider);
+      material.setLoadListener(function(resource) {
+        that.onResourceUpdated(resource);
+      });
       material.upload(gl);
     }
 

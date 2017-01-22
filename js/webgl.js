@@ -5,6 +5,8 @@ var glConfig = {
   clearColor : 0x3300FF00
 };
 
+let instance = null;
+
 function checkGLEvnvirnment() {
   console.log("[checkGLEvnvirnment] ===== begin =====");
 
@@ -61,6 +63,7 @@ function initialize(glInstance) {
 
 class GLCanvas {
   constructor(glView) {
+    instance = this;
     let gl = null;
     try {
       gl = glView.getContext('experimental-webgl');
@@ -99,7 +102,13 @@ class GLCanvas {
     if (!this.mIsGLValid) return;
     this.mGL.viewportWidth  = width;
     this.mGL.viewportHeight = height;
-    this.mGL.viewport(width / 2, 0, width / 2, height / 2);
+    this.mGL.width          = width;
+    this.mGL.height         = height;
+    if (this.mGL.style != null || this.mGL.style == 'undefined') {
+      this.mGL.style.width    = width;
+      this.mGL.style.height   = height;
+    }
+    this.mGL.viewport(0, 0, width, height);
     this.requestRender();
     this.onGLResize(width, height);
   }
@@ -110,19 +119,12 @@ class GLCanvas {
   }
 
   requestRender() {
-    if (!this.mIsGLValid) return;
+    if (!instance.mIsGLValid) return;
     requestAnimationFrame(function () {
-      let glViewArray = document.getElementsByTagName('canvas');
-      for (let i = 0; i < glViewArray.length; i++) {
-        let view = glViewArray[i];
-        if (view.glCanvas != null) {
-          let canvas    = view.glCanvas;
-          let time      = new Date().getTime();
-          let deltaTime = time - canvas.mRenderTime;
-          canvas.mRenderTime = time;
-          canvas.glDrawFrame(time, deltaTime);
-        }
-      }
+      let time      = new Date().getTime();
+      let deltaTime = time - instance.mRenderTime;
+      instance.mRenderTime = time;
+      instance.glDrawFrame.call(instance, time, deltaTime);
     });
   }
 
