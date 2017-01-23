@@ -277,7 +277,7 @@ class Shader {
                   textureUnit++;
                 } else {
                   if (binder != null) {
-                    if (!mesh.bind(gl, argumentName, binder)
+                    if (!mesh.bind(gl, location, binder)
                      && !material.bind(gl, argumentName, binder)) {
                       // mBinderValue isn't null
                       console.log("[Shader] Assign '" + argumentName + "' ...umimplemented");

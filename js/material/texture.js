@@ -73,6 +73,10 @@ class Texture {
           // gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, provider.getImage(textureProvider.PosZ));
         } else {
           gl.bindTexture(this.mType, textureID);
+          gl.texParameteri(this.mType, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(this.mType, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          gl.texParameteri(this.mType, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(this.mType, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
           gl.texImage2D(this.mType, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
           textureID.bindImageUrl = image.src;
         }

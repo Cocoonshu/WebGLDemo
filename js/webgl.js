@@ -48,10 +48,6 @@ function checkGLEvnvirnment() {
   isAllOk &= classChecker(Plane);
   isAllOk &= classChecker(ImagePlane);
 
-  // Shaders
-  isAllOk &= shaderChecker('base_vs');
-  isAllOk &= shaderChecker('base_fs');
-
   console.log("[checkGLEvnvirnment] ===== finished =====");
   return isAllOk;
 }
@@ -70,6 +66,7 @@ class GLCanvas {
       glView.glCanvas = this;
 
       this.mGL              = gl;
+      this.mGLView          = glView;
       this.mTextureProvider = new TextureProvider();
       this.mIsGLValid       = true;
       this.mRenderTime      = new Date().getTime();
@@ -97,18 +94,22 @@ class GLCanvas {
   }
 
   resize(width, height) {
-    console.log('[onGLResize] size = (' + width + ', ' + height + ')');
+    console.log('[onGLResize] size = (' + width + ', ' + height + '), ratio = ' + (width / height));
 
     if (!this.mIsGLValid) return;
+    this.mGL.viewport(0, 0, width, height);
     this.mGL.viewportWidth  = width;
     this.mGL.viewportHeight = height;
-    this.mGL.width          = width;
-    this.mGL.height         = height;
-    if (this.mGL.style != null || this.mGL.style == 'undefined') {
-      this.mGL.style.width    = width;
-      this.mGL.style.height   = height;
+    this.mGLView.width      = width;
+    this.mGLView.height     = height;
+    if (this.mGLView.style != null && this.mGLView.style != 'undefined') {
+      this.mGLView.style.width    = width;
+      this.mGLView.style.height   = height;
+    } else {
+      this.mGLView.style          = {};
+      this.mGLView.style.width    = width;
+      this.mGLView.style.height   = height;
     }
-    this.mGL.viewport(0, 0, width, height);
     this.requestRender();
     this.onGLResize(width, height);
   }

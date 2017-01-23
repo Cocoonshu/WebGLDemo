@@ -141,7 +141,10 @@ class Mesh extends Binderer {
       this.mDrawMode = gl.TRIANGLE_STRIP;
     } else if (this.mDrawModeName == Mesh.MODE_TRIANGLE_FAN) {
       this.mDrawMode = gl.TRIANGLE_FAN;
+    } else {
+      this.mDrawMode = gl.POINTS;
     }
+    return this.mDrawMode;
   }
 
   upload(gl) {
@@ -159,7 +162,7 @@ class Mesh extends Binderer {
   }
 
   bind(gl, slotName, slotBinderValue) {
-    if (gl == null || slotName == 0 || slotBinderValue == null) {
+    if (gl == null || slotName == -1 || slotName == null || slotBinderValue == null) {
       return false;
     }
 
@@ -230,7 +233,7 @@ Mesh.MODE_POINTS         = "POINTS";
 Mesh.MODE_LINES          = "LINES";
 Mesh.MODE_LINE_LOOP      = "LINE_LOOP";
 Mesh.MODE_LINE_STRIP     = "LINE_STRIP";
-Mesh.MODE_TRANGLES       = "TRIANGLES";
+Mesh.MODE_TRIANGLES      = "TRIANGLES";
 Mesh.MODE_TRIANGLE_STRIP = "TRIANGLE_STRIP";
 Mesh.MODE_TRIANGLE_FAN   = "TRIANGLE_FAN";
 Mesh.BINDER_VERTEX       = "mVertexes";

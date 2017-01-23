@@ -99,7 +99,7 @@ class TextureProvider {
   }
 
   loadTexture(texture, listener) {
-    let image = this.getImage(texture.mUrl);
+    let image = this.getImage(texture.mTextureUrl);
     if (image != null) {
       return;
     }

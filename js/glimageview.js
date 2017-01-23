@@ -5,7 +5,7 @@ var imageModel = {
   "mMesh" : [
     {
       "mName" : "#1",
-      "mDrawMode" : "TRIANGLES",
+      "mDrawMode" : "TRIANGLE_STRIP",
       "mDrawProgram" : "diffuseTexture",
       "mDrawMaterial" : "diffuseTexture",
       "mVertexes" : [
@@ -21,10 +21,10 @@ var imageModel = {
         0, 0, 1
       ],
       "mCoordinates" : [
-        0.0, 0.0,
-        1.0, 0.0,
         0.0, 1.0,
-        1.0, 1.0
+        1.0, 1.0,
+        0.0, 0.0,
+        1.0, 0.0
       ],
       "mVertexColors" : [
         1.0, 1.0, 1.0, 1.0,
@@ -85,8 +85,8 @@ var imageModel = {
         {"mType" : "uniform",   "mName" : "uDiffuseColor",   "mBinder" : "Color::filterColor"},
         {"mType" : "uniform",   "mName" : "uDiffuseSampler", "mBinder" : "Texture::diffuse"}
       ],
-      "mVertexShader" : "attribute vec3 aPosition; attribute vec3 aNormal; attribute vec4 aVertexColor; attribute vec2 aCoordinate; uniform mat4 uMatModelView; uniform mat4 uMatProjection; varying highp vec2 vTextureCoord; void main(void) {gl_Position = uMatProjection * uMatModelView * vec4(aPosition, 1.0); vTextureCoord = aCoordinate;}",
-      "mFragmentShader" : "varying highp vec2 vTextureCoord; uniform sampler2D uDiffuseSampler; uniform highp vec4 uDiffuseColor; void main(void) {gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0) * texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));}"
+      "mVertexShader" : "attribute vec3 aPosition; attribute vec3 aNormal; attribute vec4 aVertexColor; attribute vec2 aCoordinate; uniform mat4 uMatModelView; uniform mat4 uMatProjection; varying highp vec2 vTextureCoord; void main(void) {gl_Position = /*uMatProjection * uMatModelView * */vec4(aPosition * 2.0, 1.0); vTextureCoord = aCoordinate;}",
+      "mFragmentShader" : "varying highp vec2 vTextureCoord; uniform sampler2D uDiffuseSampler; uniform highp vec4 uDiffuseColor; void main(void) {gl_FragColor = /*vec4(1.0, 0.0, 1.0, 1.0) * */texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));}"
     }
   ]
 };
