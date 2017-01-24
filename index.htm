@@ -72,6 +72,23 @@
                 "mTexture" : "img/6630489422582399713.jpg"
               }
             ]
+          },
+          {
+            "mName" : "hintTexture",
+            "mColors" : [
+              {
+                "mName" : "filterColor",
+                "mColor" : [1.0, 1.0, 1.0, 1.0],
+              }
+            ],
+            "mTextures" : [
+              {
+                "mName" : "diffuse",
+                "mType" : "2D",
+                "mMipMap" : 0,
+                "mTexture" : "img/20170112140302.png"
+              }
+            ]
           }
         ],
 
@@ -157,7 +174,8 @@
       }
     </script>
   </head>
-  <body onload="onGLCanvasCreate('GLCanvas'); setup();"
+  <body style="left:0px; top:0px; right:0px; bottom:0px; margin:0px; position:absolute;"
+        onload="onGLCanvasCreate('GLCanvas'); setup();"
         onunload="onGLCanvasDestoryed()"
         onresize="onGLCanvasResize()">
     <canvas id="GLCanvas" style="border:no-border;color:#FF0000;width:100%;height:100%">WebGL isn't supported!</canvas>

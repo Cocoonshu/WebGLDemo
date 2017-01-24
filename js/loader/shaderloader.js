@@ -74,6 +74,7 @@ class ShaderLoader {
   } // #end loadFromJSON(json)
 
   /**
+   * # No Use
    * Install shader program pieces as a valid shader instance
    * @program
    * @meshArray

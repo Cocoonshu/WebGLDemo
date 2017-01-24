@@ -63,7 +63,7 @@ class Texture {
       if (image != null) {
         let textureID = gl.createTexture();
         if (this.mType == gl.TEXTURE_CUBE_MAP) {
-          console.error("[Texture] CubeMap is not supported yet");
+          console.error("[updateTexture] CubeMap is not supported yet");
           // gl.bindTexture(gl.TEXTURE_CUBE_MAP, textureID);
           // gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, provider.getImage(textureProvider.NegX));
           // gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, provider.getImage(textureProvider.PosX));
@@ -78,6 +78,7 @@ class Texture {
           gl.texParameteri(this.mType, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
           gl.texParameteri(this.mType, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
           gl.texImage2D(this.mType, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+          console.log("[updateTexture] Image '" + image.src + "' has uploaded");
           textureID.bindImageUrl = image.src;
         }
 
