@@ -13,6 +13,7 @@
       uniform   mat4 uMatProjection;
       varying   vec2 vTextureCoord;
       varying   vec4 uDiffuseColor;
+      uniform  float     uOverlapAlpha;
 
       void main(void) {
         gl_Position   = vec4(aPosition * 2.0, 1.0);
@@ -28,9 +29,33 @@
       uniform  vec4      uDiffuseColor;
       uniform  float     uOverlapAlpha;
 
+      vec4 blur(in sampler2D texture, in vec2 texcoord, in float blur) {
+         const float pixelRange = 5.0;
+         float prec       = 0.0025;
+         vec4  pixelColor = vec4(1.0);
+         float midX       = pixelRange * 0.5;
+         float midY       = pixelRange * 0.5;
+
+         if (pixelRange <= 1.0) {
+            return texture2D(texture, texcoord);
+         }
+
+         for (lowp float w = 0.0; w < pixelRange; w += 1.0) {
+            for (lowp float h = 0.0; h < pixelRange; h += 1.0) {
+               float width   = w;
+               float height  = h;
+               float offsetX = (width - midX) * prec;
+               float offsetY = (height - midY) * prec;
+               vec2  offset  = vec2(offsetX, offsetY) * blur;
+               pixelColor += texture2D(texture, texcoord + offset);
+            }
+         }
+         return pixelColor / pow(pixelRange, 2.0);
+      }
+
       void main(void) {
         vec4 diffuse = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-        vec4 overlap = texture2D(uOverlapSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        vec4 overlap = blur(uOverlapSampler, vec2(vTextureCoord.s, vTextureCoord.t), 1.0 - uOverlapAlpha);
         gl_FragColor = diffuse * (1.0 - uOverlapAlpha) + overlap * uOverlapAlpha;
       }
     </script>
@@ -49,11 +74,12 @@
       var image                  = null;
       var textureDiffuse         = null;
       var textureOverlap         = null;
-      var overlapAlphaRange      = [0.8, 0.2];
+      var overlapAlphaRange      = [1.0, 0.1];
       var finalOverlapAlpha      = overlapAlphaRange[0];
       var currentOverlapAlpha    = overlapAlphaRange[0];
       var overlapAnimationFactor = 0.05;
       var overlapAnimationError  = 0.01;
+      var images                 = [];
 
       function ShaderSourceFromScript(scriptID) {
         var shaderScript = document.getElementById(scriptID);
@@ -149,10 +175,9 @@
 
         {// texture
           console.log("[onGLCanvasCreate] initialize textures");
-          var images = [];
 
           images.push(new Image());
-          images[0].src      = "img/6630489422582399713.jpg";
+          images[0].src      = "img/watermasking.jpg";
           images[0].isLoaded = false;
           images[0].onload   = function() {
             images[0].isLoaded = true;
@@ -175,10 +200,12 @@
             labelLoading.innerHTML = "Loading..." + (progress * 100) + "%";
           };
 
-          images.push(new Image());
-          images[1].src      = "img/20170112140302.png";
-          images[1].isLoaded = false;
-          images[1].onload   = function() {
+          images.push(document.createElement('video'));
+          images[1].autoplay  = true;
+          images[1].loop      = true;
+          images[1].src       = "img/IU - zeze.mp4";
+          images[1].isLoaded  = false;
+          images[1].oncanplay = function() {
             images[1].isLoaded = true;
             textureOverlap = gl.createTexture();
             gl.activeTexture(gl.TEXTURE1);
@@ -189,6 +216,7 @@
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, images[1]);
             onDrawFrame();
+            images[1].play();
 
             var progress = 0;
             for (var i = 0; i < images.length; i++) {
@@ -210,6 +238,7 @@
       }
 
       function onDrawFrame() {
+        var hasMoreFrame = false;
         if (textureDiffuse == null || textureOverlap == null) {
           return;
         }
@@ -217,9 +246,10 @@
         {// Update animated part
           currentOverlapAlpha = currentOverlapAlpha + (finalOverlapAlpha - currentOverlapAlpha) * overlapAnimationFactor;
           if (Math.abs(currentOverlapAlpha - finalOverlapAlpha) > overlapAnimationError) {
-            requestAnimationFrame(onDrawFrame);
+            hasMoreFrame = true;
           } else {
             currentOverlapAlpha = finalOverlapAlpha;
+            hasMoreFrame = false;
           }
         }
 
@@ -243,8 +273,10 @@
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.uniform1i(indexDiffuseSampler, 0); // 0 for Texture unit id
 
+        hasMoreFrame = true;
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, textureOverlap);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, images[1]);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -253,7 +285,10 @@
 
         gl.uniform1f(indexOverlapAlpha, currentOverlapAlpha);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        //gl.drawElements(gl.TRIANGLE_STRIP, 4, gl.FLOAT, [0, 1, 2, 3]);
+
+        if (hasMoreFrame) {
+          requestRender();
+        }
       }
 
       function onGLCanvasDestoryed() {
@@ -291,12 +326,10 @@
 
       function fadeInOverlap() {
         finalOverlapAlpha = overlapAlphaRange[1];
-        requestRender();
       }
 
       function fadeOutOverlap() {
         finalOverlapAlpha = overlapAlphaRange[0];
-        requestRender();
       }
 
       function requestRender() {

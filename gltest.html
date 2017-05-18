@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+        <title>WebGL</title>
+        <script type="x-shader/x-vertex" id="base_vs">
+            precision highp float;
+            attribute vec3  aPosition;
+            attribute vec3  aNormal;
+            attribute vec4  aVertexColor;
+            attribute vec2  aCoordinate;
+            uniform   mat4  uMatModelView;
+            uniform   mat4  uMatProjection;
+            varying   vec2  vTextureCoord;
+            varying   vec4  uDiffuseColor;
+            uniform   float uOverlapAlpha;
+
+            void main(void) {
+                float ratio  = 1242.0 / 380.0;
+                float height = 380.0;
+                gl_Position   = vec4(aPosition, 1.0) / vec4(ratio * height, height, 1, 1) - vec4(0.5, 0.5, 0.0, 0.0);
+                vTextureCoord = aCoordinate;
+                uDiffuseColor = aVertexColor;
+            }
+        </script>
+        <script type="x-shader/x-fragment" id="base_fs">
+            precision highp     float;
+            varying   vec2      vTextureCoord;
+            uniform   sampler2D uDiffuseSampler;
+            uniform   vec4      uDiffuseColor;
+
+            void main(void) {
+                vec4 diffuse = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+                gl_FragColor = diffuse;
+            }
+        </script>
+        <script>
+            'use strict';
+            var blockConfig = {
+                width: 534,
+                height: 534,
+                itemRatio: 1.0,
+                column: 2,
+                row: 2,
+                gap: 4,
+                uvmap: [0, 1, 2, 3],
+                clearColor: [0.0, 0.0, 0.0, 1.0],
+                src: 'img/block.png'
+            };
+
+            var dayConfig = {
+                width: 1068,
+                height: 267,
+                itemRatio: 1.0,
+                column: 4,
+                row: 1,
+                gap: 4,
+                uvmap: [2, 1, 0, 3],
+                clearColor: [0.0, 0.0, 0.0, 1.0],
+                src: 'img/day-img.png'
+            };
+
+            var monthConfig = {
+                width: 1080,
+                height: 324,
+                itemRatio: 1.0,
+                column: 10,
+                row: 3,
+                gap: 4,
+                uvmap: [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+                clearColor: [0.0, 0.0, 0.0, 1.0],
+                src: 'img/month-img.png'
+            };
+
+            var yearConfig = {
+                width: 1248,
+                height: 380,
+                itemRatio: 1.026315789473684,
+                column: 32,
+                row: 10,
+                gap: 1,
+                uvmap: null,
+                clearColor: [0.2, 0.2, 0.2, 1.0],
+                src: 'img/year-img.png'
+            };
+
+            var labelLoading           = null;
+            var glView                 = null;
+            var gl                     = null;
+            var glProgram              = null;
+            var indexPosition          = null;
+            var indexCoordinate        = null;
+            var indexDiffuseSampler    = null;
+            var vertexBuffer           = null;
+            var coordinateBuffer       = null;
+            var indiceBuffer           = null;
+            var image                  = null;
+            var textureDiffuse         = null;
+            var images                 = null;
+            var CONFIG                 = blockConfig;
+
+            function ShaderSourceFromScript(scriptID) {
+                var shaderScript = document.getElementById(scriptID);
+                if (shaderScript == null) return "";
+
+                var sourceCode = "";
+                var child = shaderScript.firstChild;
+                while (child) {
+                    if (child.nodeType == child.TEXT_NODE ) sourceCode += child.textContent;
+                    child = child.nextSibling;
+                }
+
+                return sourceCode;
+            }
+
+            function onGLCanvasCreate() {
+                console.log("[onGLCanvasCreate]");
+                labelLoading = document.getElementById("labelLoading");
+                glView       = document.getElementById('GLCanvas');
+                gl           = glView.getContext('experimental-webgl');
+
+                if (gl == null) {
+                    labelLoading.style.color = "#FF1111";
+                    labelLoading.innerHTML = "Error: WebGL isn't supported!";
+                }
+
+                {// Shader
+                    console.log("[onGLCanvasCreate] initialize shaders");
+                    var vertexShaderSource   = ShaderSourceFromScript('base_vs');
+                    var fragmentShaderSource = ShaderSourceFromScript('base_fs');
+                    var vertexShader         = gl.createShader(gl.VERTEX_SHADER);
+                    var fragmentShader       = gl.createShader(gl.FRAGMENT_SHADER);
+                    var shaderProgram        = gl.createProgram();
+
+                    gl.shaderSource(vertexShader, vertexShaderSource);
+                    gl.compileShader(vertexShader);
+                    if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+                        console.error("[loadShader] compile vertex shader ...Failed");
+                        console.error("[loadShader] " + gl.getShaderInfoLog(vertexShader));
+                        return;
+                    }
+
+                    gl.shaderSource(fragmentShader, fragmentShaderSource);
+                    gl.compileShader(fragmentShader);
+                    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+                        console.error("[loadShader] compile fragment shader ...Failed");
+                        console.error("[loadShader] " + gl.getShaderInfoLog(fragmentShader));
+                        return;
+                    }
+
+                    gl.attachShader(shaderProgram, vertexShader);
+                    gl.attachShader(shaderProgram, fragmentShader);
+                    gl.linkProgram(shaderProgram);
+                    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                        console.error("[loadProgram] link program ...Failed");
+                        console.error("[loadProgram] " + gl.getProgramInfoLog(shaderProgram));
+                        return;
+                    }
+                    glProgram           = shaderProgram;
+                    indexPosition       = gl.getAttribLocation(glProgram, 'aPosition');
+                    indexCoordinate     = gl.getAttribLocation(glProgram, 'aCoordinate');
+                    indexDiffuseSampler = gl.getUniformLocation(glProgram, 'uDiffuseSampler');
+
+                    console.log("[loadProgram] mapping 'aPosition' as " + indexPosition);
+                    console.log("[loadProgram] mapping 'aCoordinate' as " + indexCoordinate);
+                    console.log("[loadProgram] mapping 'uDiffuseSampler' as " + indexDiffuseSampler);
+                }
+
+                {// Mesh
+                    <!-- -0.5, -0.5, 0, -->
+                    <!-- +0.5, -0.5, 0, -->
+                    <!-- -0.5, +0.5, 0, -->
+                    <!-- +0.5, +0.5, 0 -->
+
+                    <!-- 0.0, 1.0, -->
+                    <!-- 1.0, 1.0, -->
+                    <!-- 0.0, 0.0, -->
+                    <!-- 1.0, 0.0 -->
+                    console.log("[onGLCanvasCreate] initialize meshes");
+                    vertexBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+                    gl.bufferData(
+                        gl.ARRAY_BUFFER,
+                        new Float32Array(buildVertexMesh(CONFIG.width, CONFIG.height, CONFIG.column, CONFIG.row, CONFIG.gap)),
+                        gl.STATIC_DRAW);
+
+                        coordinateBuffer = gl.createBuffer();
+                        gl.bindBuffer(gl.ARRAY_BUFFER, coordinateBuffer);
+                        gl.bufferData(
+                            gl.ARRAY_BUFFER,
+                            new Float32Array(buildUVMesh(CONFIG.width, CONFIG.height, CONFIG.column, CONFIG.row, CONFIG.itemRatio, CONFIG.uvmap)),
+                            gl.STATIC_DRAW);
+
+                        indiceBuffer = gl.createBuffer();
+                        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indiceBuffer);
+                        gl.bufferData(
+                            gl.ELEMENT_ARRAY_BUFFER,
+                            new Uint16Array(buildIndiceMesh(CONFIG.column, CONFIG.row)),
+                            gl.STATIC_DRAW);
+                        }
+
+                        {// texture
+                            console.log("[onGLCanvasCreate] initialize textures");
+
+                            images = new Image();
+                            images.src      = CONFIG.src;
+                            images.isLoaded = false;
+                            images.onload   = function() {
+                                images.isLoaded = true;
+                                textureDiffuse = gl.createTexture();
+                                gl.activeTexture(gl.TEXTURE0);
+                                gl.bindTexture(gl.TEXTURE_2D, textureDiffuse);
+                                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, images);
+                                onDrawFrame();
+                            };
+                        }
+
+                        {// Initialize
+                            console.log("[onGLCanvasCreate] initialize glcontext");
+                            gl.clearColor(CONFIG.clearColor[0], CONFIG.clearColor[1], CONFIG.clearColor[2], CONFIG.clearColor[3]);
+                            gl.clearDepth(1.0);
+                        }
+                    }
+
+                    function onDrawFrame() {
+                        var hasMoreFrame = false;
+                        if (textureDiffuse == null) {
+                            return;
+                        }
+                        console.log("[onDrawFrame]");
+
+                        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+                        gl.useProgram(glProgram);
+
+                        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+                        gl.enableVertexAttribArray(indexPosition);
+                        gl.vertexAttribPointer(indexPosition, 3, gl.FLOAT, false, 0, 0);
+
+                        gl.bindBuffer(gl.ARRAY_BUFFER, coordinateBuffer);
+                        gl.enableVertexAttribArray(indexCoordinate);
+                        gl.vertexAttribPointer(indexCoordinate, 2, gl.FLOAT, false, 0, 0);
+
+                        gl.activeTexture(gl.TEXTURE0);
+                        gl.bindTexture(gl.TEXTURE_2D, textureDiffuse);
+                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                        gl.uniform1i(indexDiffuseSampler, 0); // 0 for Texture unit id
+
+                        gl.drawElements(gl.TRIANGLES, indiceLength(CONFIG.width, CONFIG.height, CONFIG.column, CONFIG.row, CONFIG.gap), gl.UNSIGNED_SHORT, 0);
+
+                        if (hasMoreFrame) {
+                            requestRender();
+                        }
+                    }
+
+                    function onGLCanvasDestoryed() {
+                        console.log("[onGLCanvasDestoryed]");
+
+                        gl.disableVertexAttribArray(indexPosition);
+                        gl.deleteBuffer(vertexBuffer);
+                        indexPosition = null;
+                        vertexBuffer  = null;
+
+                        gl.disableVertexAttribArray(indexCoordinate);
+                        gl.deleteBuffer(coordinateBuffer);
+                        indexCoordinate  = null;
+                        coordinateBuffer = null;
+                    }
+
+                    function onGLCanvasResize() {
+                        var width  = glView.clientWidth;
+                        var height = glView.clientHeight;
+
+                        console.log("[onGLCanvasResize] size = (" + width + ", " + height + ")");
+                        gl.viewport(0, 0, width, height);
+
+                        // This following code is necessary
+                        // Make sure that the canvas width and height match the pixel display size.
+                        // The display size is set via the style width and height.
+                        // Resolution is the number of pixels in the image.
+                        // Display size is the amount of space that it occupies on the page.
+                        // The two should match for the best results.
+                        glView.width        = width;
+                        glView.height       = height;
+                        glView.style.width  = width;
+                        glView.style.height = height;
+                    }
+
+                    function requestRender() {
+                        requestAnimationFrame(onDrawFrame);
+                    }
+
+                    /**
+                    * private methods
+                    */
+                    function buildVertexMesh(width, height, columnCount, rowCount, gap) {
+                        let gapCount    = columnCount < 1 ? 0 : (columnCount - 1);
+                        let slotCount   = columnCount * rowCount;
+                        let vertexCount = slotCount * 4;
+                        let slotWidth   = (width - gapCount * gap) / columnCount;
+                        let slotHeight  = slotWidth;
+                        let buffer      = new Array(vertexCount * 3);
+
+                        // console.log("[buildVertexMesh] ============ start ============");
+                        for (let slot = 0; slot < slotCount; slot++) {
+                            let column   = parseInt(slot % columnCount);
+                            let row      = parseInt(slot / columnCount);
+                            let gapHIter = column < 1 ? 0 : column;
+                            let gapVIter = row < 1 ? 0 : row;
+                            let left     = gap * gapHIter + slotWidth * column;
+                            let top      = gap * gapVIter + slotHeight * row;
+                            let right    = left + slotWidth;
+                            let bottom   = top + slotHeight;
+                            // console.log("[buildVertexMesh] slot = [" + column + ", " + row + "], "
+                            //             + "x = (gap * " + gapHIter + " + slotWidth * " + column + ") = " + left + ", "
+                            //             + "y = (gap * " + gapVIter + " + slotHeight * " + row + ") = " + right
+                            // );
+
+                            // Vertex 0
+                            buffer[slot * 12 + 0] = left;
+                            buffer[slot * 12 + 1] = top;
+                            buffer[slot * 12 + 2] = 0;
+
+                            // Vertex 1
+                            buffer[slot * 12 + 3] = right;
+                            buffer[slot * 12 + 4] = top;
+                            buffer[slot * 12 + 5] = 0;
+
+                            // Vertex 2
+                            buffer[slot * 12 + 6] = left;
+                            buffer[slot * 12 + 7] = bottom;
+                            buffer[slot * 12 + 8] = 0;
+
+                            // Vertex 3
+                            buffer[slot * 12 + 9]  = right;
+                            buffer[slot * 12 + 10] = bottom;
+                            buffer[slot * 12 + 11] = 0;
+
+                            // console.log("[buildVertexMesh] slot = [" + column + ", " + row + "] coord = ["
+                            //     + "(" + (buffer[slot * 12 + 0]) + ", " + (buffer[slot * 12 + 1]) + ", " + (buffer[slot * 12 + 2]) + "), "
+                            //     + "(" + (buffer[slot * 12 + 3]) + ", " + (buffer[slot * 12 + 4]) + ", " + (buffer[slot * 12 + 5]) + "), "
+                            //     + "(" + (buffer[slot * 12 + 6]) + ", " + (buffer[slot * 12 + 7]) + ", " + (buffer[slot * 12 + 8]) + "), "
+                            //     + "(" + (buffer[slot * 12 + 9]) + ", " + (buffer[slot * 12 + 10]) + ", " + (buffer[slot * 12 + 11]) + ")]"
+                            // );
+                        }
+                        return buffer;
+                    }
+
+                    function buildUVMesh(width, height, columnCount, rowCount, itemRatio, uvmap) {
+                        let slotCount   = columnCount * rowCount;
+                        let vertexCount = slotCount * 4;
+                        let slotWidth   = width / columnCount;
+                        let slotHeight  = slotWidth / itemRatio;
+                        let buffer      = new Array(vertexCount * 2);
+
+                        console.log("[buildUVMesh] start: slotSize = (" + slotWidth + ", " + slotHeight + ")");
+                        for (let slot = 0; slot < slotCount; slot++) {
+                            if ((uvmap != null && uvmap[slot] < 0) || (uvmap == null && slot < 0)) {
+                                buffer[slot * 8 + 0] = buffer[slot * 8 + 1] = 0;
+                                buffer[slot * 8 + 2] = buffer[slot * 8 + 3] = 0;
+                                buffer[slot * 8 + 4] = buffer[slot * 8 + 5] = 0;
+                                buffer[slot * 8 + 6] = buffer[slot * 8 + 7] = 0;
+                            } else {
+                                let uvslot = uvmap != null ? uvmap[slot] : slot;
+                                let column = parseInt(uvslot % columnCount);
+                                let row    = parseInt(uvslot / columnCount);
+                                let left   = slotWidth * column;
+                                let top    = slotHeight * row;
+                                let right  = left + slotWidth;
+                                let bottom = top + slotHeight;
+
+                                left   /= width;
+                                right  /= width;
+                                top    /= height;
+                                bottom /= height;
+                                top    =  top;
+                                bottom =  bottom;
+
+                                // Vertex 0
+                                buffer[slot * 8 + 0] = left;
+                                buffer[slot * 8 + 1] = top;
+
+                                // Vertex 1
+                                buffer[slot * 8 + 2] = right;
+                                buffer[slot * 8 + 3] = top;
+
+                                // Vertex 2
+                                buffer[slot * 8 + 4] = left;
+                                buffer[slot * 8 + 5] = bottom;
+
+                                // Vertex 3
+                                buffer[slot * 8 + 6] = right;
+                                buffer[slot * 8 + 7] = bottom;
+
+                                console.log("[buildUVMesh] slot = [" + column + ", " + row + "] coord = ["
+                                    + "(" + (buffer[slot * 8 + 0]) + ", " + (buffer[slot * 8 + 1]) + "), "
+                                    + "(" + (buffer[slot * 8 + 2]) + ", " + (buffer[slot * 8 + 3]) + "), "
+                                    + "(" + (buffer[slot * 8 + 4]) + ", " + (buffer[slot * 8 + 5]) + "), "
+                                    + "(" + (buffer[slot * 8 + 6]) + ", " + (buffer[slot * 8 + 7]) + ")], "
+                                    + "uvmap[" + slot + "] = " + uvslot
+                                );
+                            }
+                        }
+                        return buffer;
+                    }
+
+                    function buildIndiceMesh(columnCount, rowCount) {
+                        let slotCount     = columnCount * rowCount;
+                        let triangleCount = slotCount * 2;
+                        let buffer        = new Array(triangleCount * 3);
+
+                        for (let slot = 0; slot < slotCount; slot++) {
+                            buffer[slot * 6 + 0] = slot * 4 + 0;
+                            buffer[slot * 6 + 1] = slot * 4 + 1;
+                            buffer[slot * 6 + 2] = slot * 4 + 2;
+
+                            buffer[slot * 6 + 3] = slot * 4 + 1;
+                            buffer[slot * 6 + 4] = slot * 4 + 2;
+                            buffer[slot * 6 + 5] = slot * 4 + 3;
+                        }
+
+                        return buffer;
+                    }
+
+                    function indiceLength(width, height, columnCount, rowCount, gap) {
+                        return columnCount * rowCount * 2 * 3;
+                    }
+
+                    function convertUVIndex(columnCount, rowCount, slot) {
+                        // let column = parseInt(slot % columnCount);
+                        // let row    = rowCount - parseInt(slot / columnCount) - 1;
+                        // return row * columnCount + column;
+                        return slot;
+                    }
+
+                    </script>
+        </head>
+    <body style="border:no-border; margin:0%; position:absolute; text-align:center; overflow-x: hidden; overflow-y: hidden; left:0px; top:0px; right:0px; bottom:0px"
+        onload="onGLCanvasCreate();onGLCanvasResize();requestRender();"
+        onunload="onGLCanvasDestoryed();"
+        onresize="onGLCanvasResize();requestRender();"
+        onmouseover="requestRender();">
+        <div id="labelLoading" style="position:absolute; text-align:center; left:0%; top:50%; width:100%; height:50%; color:#000000; font-family:arial, sans-serif; font-size:2em">
+            Loading...
+        </div>
+        <div style="position:relative; border:no-border; color:#FF0000; width:100%; height:100%; margin:0%;">
+            <canvas id="GLCanvas" style="width:100%; height:100%;">WebGL isn't supported!</canvas>
+            <div style="position:absolute; left:0%; top:0%; margin:1em; color:#FFFFFF; font-family:arial, sans-serif; font-size:1.2em">
+                WebGL - MultiTexture
+            </div>
+            <div style="position:absolute; right:0%; bottom:0%; margin:1em; color:#FFFFFF; opacity:0.6; font-family:arial, sans-serif;  font-size:0.5em">
+                @Cocoonshu
+            </div>
+        </div>
+    </body>
+</html>

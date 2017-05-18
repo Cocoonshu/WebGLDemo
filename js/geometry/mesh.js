@@ -19,12 +19,14 @@ class Mesh extends Binderer {
     this.mNormalBuffer      = null;
     this.mCoordBuffer       = null;
     this.mVertexColorBuffer = null;
+    this.mIndiceBuffer      = null;
 
     this.mBinderMap = [
       {key:"mVertexes",     value:this.mVertexBuffer},
       {key:"mNormals",      value:this.mNormalBuffer},
       {key:"mCoordinates",  value:this.mCoordBuffer},
-      {key:"mVertexColors", value:this.mVertexColorBuffer}
+      {key:"mVertexColors", value:this.mVertexColorBuffer},
+      {key:"mIndices",      value:this.mIndiceBuffer}
     ];
   }
 
@@ -124,6 +126,16 @@ class Mesh extends Binderer {
     return buffer;
   }
 
+  buildIndiceBuffer(gl) {
+    if (this.mVertexColors == null)
+      return 0;
+
+    let buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int32Array(this.mIndices), gl.STATIC_DRAW);
+    return buffer;
+  }
+
   parseDrawModeString(gl) {
     if (this.mDrawModeName == null) {
       this.mDrawMode = gl.POINTS;
@@ -152,12 +164,14 @@ class Mesh extends Binderer {
     this.mNormalBuffer      = this.buildNormalBuffer(gl);
     this.mCoordBuffer       = this.buildCoordinateBuffer(gl);
     this.mVertexColorBuffer = this.buildVertexColorBuffer(gl);
+    this.mIndiceBuffer      = this.buildIndiceBuffer(gl);
     this.mDrawMode          = this.parseDrawModeString(gl);
     this.mBinderMap         = [
       {key:"mVertexes",     value:this.mVertexBuffer},
       {key:"mNormals",      value:this.mNormalBuffer},
       {key:"mCoordinates",  value:this.mCoordBuffer},
-      {key:"mVertexColors", value:this.mVertexColorBuffer}
+      {key:"mVertexColors", value:this.mVertexColorBuffer},
+      {key:"mIndices",      value:this.mIndiceBuffer}
     ];
   }
 
