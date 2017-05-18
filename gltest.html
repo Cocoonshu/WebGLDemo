@@ -43,7 +43,7 @@
                 column: 2,
                 row: 2,
                 gap: 4,
-                uvmap: [0, 1, 2, 3],
+                uvmap: [1, 2, 3, 0],
                 clearColor: [0.0, 0.0, 0.0, 1.0],
                 src: 'img/block.png'
             };
@@ -311,13 +311,14 @@
                         // console.log("[buildVertexMesh] ============ start ============");
                         for (let slot = 0; slot < slotCount; slot++) {
                             let column   = parseInt(slot % columnCount);
-                            let row      = parseInt(slot / columnCount);
+                            let row      = columnCount - parseInt(slot / columnCount) - 1;
                             let gapHIter = column < 1 ? 0 : column;
                             let gapVIter = row < 1 ? 0 : row;
                             let left     = gap * gapHIter + slotWidth * column;
                             let top      = gap * gapVIter + slotHeight * row;
                             let right    = left + slotWidth;
                             let bottom   = top + slotHeight;
+
                             // console.log("[buildVertexMesh] slot = [" + column + ", " + row + "], "
                             //             + "x = (gap * " + gapHIter + " + slotWidth * " + column + ") = " + left + ", "
                             //             + "y = (gap * " + gapVIter + " + slotHeight * " + row + ") = " + right
@@ -325,22 +326,22 @@
 
                             // Vertex 0
                             buffer[slot * 12 + 0] = left;
-                            buffer[slot * 12 + 1] = top;
+                            buffer[slot * 12 + 1] = bottom;
                             buffer[slot * 12 + 2] = 0;
 
                             // Vertex 1
                             buffer[slot * 12 + 3] = right;
-                            buffer[slot * 12 + 4] = top;
+                            buffer[slot * 12 + 4] = bottom;
                             buffer[slot * 12 + 5] = 0;
 
                             // Vertex 2
                             buffer[slot * 12 + 6] = left;
-                            buffer[slot * 12 + 7] = bottom;
+                            buffer[slot * 12 + 7] = top;
                             buffer[slot * 12 + 8] = 0;
 
                             // Vertex 3
                             buffer[slot * 12 + 9]  = right;
-                            buffer[slot * 12 + 10] = bottom;
+                            buffer[slot * 12 + 10] = top;
                             buffer[slot * 12 + 11] = 0;
 
                             // console.log("[buildVertexMesh] slot = [" + column + ", " + row + "] coord = ["
