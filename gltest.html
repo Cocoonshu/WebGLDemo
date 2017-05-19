@@ -6,30 +6,25 @@
         <script type="x-shader/x-vertex" id="base_vs">
             precision highp float;
             attribute vec3  aPosition;
-            attribute vec3  aNormal;
-            attribute vec4  aVertexColor;
             attribute vec2  aCoordinate;
             uniform   mat4  uMatModelView;
             uniform   mat4  uMatProjection;
             varying   vec2  vTextureCoord;
-            varying   vec4  uDiffuseColor;
-            uniform   float uOverlapAlpha;
 
             void main(void) {
                 float ratio  = 1242.0 / 380.0;
                 float height = 380.0;
                 gl_Position   = vec4(aPosition, 1.0) / vec4(ratio * height, height, 1, 1) - vec4(0.5, 0.5, 0.0, 0.0);
                 vTextureCoord = aCoordinate;
-                uDiffuseColor = aVertexColor;
             }
         </script>
         <script type="x-shader/x-fragment" id="base_fs">
             precision highp     float;
             varying   vec2      vTextureCoord;
             uniform   sampler2D uDiffuseSampler;
-            uniform   vec4      uDiffuseColor;
 
             void main(void) {
+                vec4 placeholder = vec4(0.3, 0.3, 0.3, 1.0);
                 vec4 diffuse = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));
                 gl_FragColor = diffuse;
             }
@@ -44,6 +39,7 @@
                 row: 2,
                 gap: 4,
                 uvmap: [1, 2, 3, 0],
+                displayCount: 4,
                 clearColor: [0.0, 0.0, 0.0, 1.0],
                 src: 'img/block.png'
             };
@@ -56,6 +52,7 @@
                 row: 1,
                 gap: 4,
                 uvmap: [2, 1, 0, 3],
+                displayCount: 4,
                 clearColor: [0.0, 0.0, 0.0, 1.0],
                 src: 'img/day-img.png'
             };
@@ -67,7 +64,8 @@
                 column: 10,
                 row: 3,
                 gap: 4,
-                uvmap: [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 3, 2, 1, 0],
+                uvmap: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+                displayCount: 10 * 3 - 4,
                 clearColor: [0.0, 0.0, 0.0, 1.0],
                 src: 'img/month-img.png'
             };
@@ -80,6 +78,7 @@
                 row: 10,
                 gap: 1,
                 uvmap: null,
+                displayCount: 32 * 10 - 5,
                 clearColor: [0.2, 0.2, 0.2, 1.0],
                 src: 'img/year-img.png'
             };
@@ -97,7 +96,7 @@
             var image                  = null;
             var textureDiffuse         = null;
             var images                 = null;
-            var CONFIG                 = monthConfig;
+            var CONFIG                 = yearConfig;
 
             function ShaderSourceFromScript(scriptID) {
                 var shaderScript = document.getElementById(scriptID);
@@ -195,7 +194,7 @@
                         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indiceBuffer);
                         gl.bufferData(
                             gl.ELEMENT_ARRAY_BUFFER,
-                            new Uint16Array(buildIndiceMesh(CONFIG.column, CONFIG.row)),
+                            new Uint16Array(buildIndiceMesh(CONFIG.column, CONFIG.row, CONFIG.displayCount)),
                             gl.STATIC_DRAW);
                         }
 
@@ -389,12 +388,12 @@
                         return buffer;
                     }
 
-                    function buildIndiceMesh(columnCount, rowCount) {
+                    function buildIndiceMesh(columnCount, rowCount, displayCount) {
                         let slotCount     = columnCount * rowCount;
                         let triangleCount = slotCount * 2;
                         let buffer        = new Array(triangleCount * 3);
 
-                        for (let slot = 0; slot < slotCount; slot++) {
+                        for (let slot = 0; slot < slotCount && slot < displayCount; slot++) {
                             buffer[slot * 6 + 0] = slot * 4 + 0;
                             buffer[slot * 6 + 1] = slot * 4 + 1;
                             buffer[slot * 6 + 2] = slot * 4 + 2;
@@ -410,14 +409,6 @@
                     function indiceLength(width, height, columnCount, rowCount, gap) {
                         return columnCount * rowCount * 2 * 3;
                     }
-
-                    function convertUVIndex(columnCount, rowCount, slot) {
-                        // let column = parseInt(slot % columnCount);
-                        // let row    = rowCount - parseInt(slot / columnCount) - 1;
-                        // return row * columnCount + column;
-                        return slot;
-                    }
-
                     </script>
         </head>
     <body style="border:no-border; margin:0%; position:absolute; text-align:center; overflow-x: hidden; overflow-y: hidden; left:0px; top:0px; right:0px; bottom:0px"
