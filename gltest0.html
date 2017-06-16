@@ -5,35 +5,91 @@
         <title>WebGL</title>
         <script type="x-shader/x-vertex" id="base_vs">
             precision highp float;
+            attribute float aSerial;
             attribute vec3  aPosition;
             attribute vec2  aCoordinate;
-            uniform   mat4  uMatModelView;
-            uniform   mat4  uMatProjection;
             varying   vec2  vTextureCoord;
+            uniform   float uGapProgress;
+            uniform   vec4  uGridSize;
+            varying   float vSerial;
+            varying   float vSlot;
 
             void main(void) {
-                float ratio  = 1242.0 / 380.0;
-                float height = 380.0;
-                gl_Position   = vec4(aPosition, 1.0) / vec4(ratio * height, height, 1, 1) - vec4(0.5, 0.5, 0.0, 0.0);
+                vec2 translate = vec2(-0.5, -0.5);
+                vec2 scale     = vec2(1248.0, 380.0);
+                mat4 transform = mat4(
+                    1.0 / scale.x, 0.0, 0.0, 0.0,
+                    0.0, 1.0 / scale.y, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 0.0,
+                    translate.x, translate.y, 0.0, 1.0
+                );
+
+                float vgap   = uGridSize[2] / scale.x;
+                float hgap   = uGridSize[3] / scale.y;
+                int   slot   = int(aSerial) / 4;
+                int   column = int(mod(float(slot), uGridSize.x));
+                int   row    = int(float(slot) / uGridSize.x);
+
+                gl_Position = transform * vec4(aPosition, 1.0);
+                gl_Position.x = gl_Position.x - float(column) * vgap * uGapProgress;
+                gl_Position.y = gl_Position.y + float(row) * hgap * uGapProgress;
                 vTextureCoord = aCoordinate;
+
+                // Debug
+                vSerial = aSerial;
+                vSlot   = float(slot);
             }
         </script>
         <script type="x-shader/x-fragment" id="base_fs">
+            #define SLOT_COUNT 30
             precision highp     float;
             varying   vec2      vTextureCoord;
             uniform   sampler2D uDiffuseSampler;
+            uniform   float     uAlpha;
             uniform   vec4      uPlaceHolderColor;
+            uniform   vec4      uGridSize;
+            uniform   int       uInvalidSlot[SLOT_COUNT];
+            uniform   float     uGapProgress;
+            varying   float     vSerial;
+            varying   float     vSlot;
+
+            void drawPlaceHolder() {
+                if (uGridSize.x * uGridSize.y > 0.0) {
+                    vec2 slotSize = vec2(1.0 / uGridSize.x, 1.0 / uGridSize.y);
+                    for (int i = 0; i < SLOT_COUNT; i++) {
+                        int slot = uInvalidSlot[i];
+                        if (slot <= 0) {
+                            break;
+                        } else {
+                            int   column = int(mod(float(slot), uGridSize.x));
+                            int   row    = int(float(slot) / uGridSize.x);
+                            float left   = float(column) * slotSize.x;
+                            float top    = float(row) * slotSize.y;
+                            float right  = left + slotSize.x;
+                            float bottom = top + slotSize.y;
+                            if (vTextureCoord.s >= left && vTextureCoord.s < right && vTextureCoord.t >= top && vTextureCoord.t < bottom) {
+                                vec4 color = vec4(uPlaceHolderColor.rgb, uPlaceHolderColor.a * uAlpha);
+                                gl_FragColor = color * uGapProgress + gl_FragColor * (1.0 - uGapProgress);
+                            }
+                        }
+                    }
+                }
+            }
 
             void main(void) {
-                vec4 placeholder = vec4(0.3, 0.3, 0.3, 1.0);
-                vec4 diffuse = texture2D(uDiffuseSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-                float reverseAlpha = 1.0 - uPlaceHolderColor.a;
-                gl_FragColor = vec4(
-                    diffuse.r * reverseAlpha + uPlaceHolderColor.r * uPlaceHolderColor.a,
-                    diffuse.g * reverseAlpha + uPlaceHolderColor.g * uPlaceHolderColor.a,
-                    diffuse.b * reverseAlpha + uPlaceHolderColor.b * uPlaceHolderColor.a,
-                    1.0
-                );
+                vec4 diffuse = texture2D(uDiffuseSampler, vTextureCoord);
+                gl_FragColor = vec4(diffuse.rgb, diffuse.a * uAlpha);
+                drawPlaceHolder();
+
+                int slot = int(vSerial);
+                // if (slot == 0) {
+                //     gl_FragColor.g = 1.0;
+                // } else if (slot == 1) {
+                //     gl_FragColor.r = 0.0;
+                // } else if (slot == 2) {
+                //     gl_FragColor.rb = vec2(1.0, 1.0);
+                // }
+                gl_FragColor.g = vSerial / 255.0;
             }
         </script>
         <script>
@@ -62,7 +118,7 @@
                 hgap: 4,
                 uvmap: [2, 1, 0, 3],
                 displayCount: 4,
-                clearColor: [0.0, 0.0, 0.0, 1.0],
+                clearColor: [1.2, 1.2, 0.2, 1.0],
                 src: 'img/day-img.png'
             };
 
@@ -75,8 +131,8 @@
                 vgap: 4,
                 hgap: 4,
                 uvmap: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
-                displayCount: 10 * 3 - 4,
-                clearColor: [0.0, 0.0, 0.0, 1.0],
+                displayCount: 10 * 3 - 3,
+                clearColor: [1.0, 1.0, 1.0, 1.0],
                 src: 'img/month-img.png'
             };
 
@@ -98,10 +154,16 @@
             var glView                 = null;
             var gl                     = null;
             var glProgram              = null;
+            var indexSerial            = null;
             var indexPosition          = null;
             var indexCoordinate        = null;
             var indexDiffuseSampler    = null;
+            var indexAlpha             = null;
             var indexPlaceHolderColor  = null;
+            var indexGridSize          = null;
+            var indexInvalidSlots      = null;
+            var indexGapProgress       = null;
+            var serialBuffer           = null;
             var vertexBuffer           = null;
             var coordinateBuffer       = null;
             var indiceBuffer           = null;
@@ -168,15 +230,24 @@
                         return;
                     }
                     glProgram             = shaderProgram;
+                    indexSerial           = gl.getAttribLocation(glProgram, 'aSerial');
                     indexPosition         = gl.getAttribLocation(glProgram, 'aPosition');
                     indexCoordinate       = gl.getAttribLocation(glProgram, 'aCoordinate');
                     indexDiffuseSampler   = gl.getUniformLocation(glProgram, 'uDiffuseSampler');
+                    indexAlpha            = gl.getUniformLocation(glProgram, 'uAlpha');
                     indexPlaceHolderColor = gl.getUniformLocation(glProgram, 'uPlaceHolderColor');
+                    indexGridSize         = gl.getUniformLocation(glProgram, 'uGridSize');
+                    indexInvalidSlots     = gl.getUniformLocation(glProgram, 'uInvalidSlot');
+                    indexGapProgress      = gl.getUniformLocation(glProgram, 'uGapProgress');
 
+                    console.log("[loadProgram] mapping 'aSerial' as " + indexSerial);
                     console.log("[loadProgram] mapping 'aPosition' as " + indexPosition);
                     console.log("[loadProgram] mapping 'aCoordinate' as " + indexCoordinate);
                     console.log("[loadProgram] mapping 'uDiffuseSampler' as " + indexDiffuseSampler);
-                    console.log("[loadProgram] mapping 'uPlaceHolderColor' as " + indexPlaceHolderColor);
+                    console.log("[loadProgram] mapping 'uAlpha' as " + indexAlpha);
+                    console.log("[loadProgram] mapping 'uGridSize' as " + indexGridSize);
+                    console.log("[loadProgram] mapping 'uInvalidSlot' as " + indexInvalidSlots);
+                    console.log("[loadProgram] mapping 'uGapProgress' as " + indexGapProgress);
                 }
 
                 {// Mesh
@@ -190,6 +261,13 @@
                     <!-- 0.0, 0.0, -->
                     <!-- 1.0, 0.0 -->
                     console.log("[onGLCanvasCreate] initialize meshes");
+                    serialBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, serialBuffer);
+                    gl.bufferData(
+                        gl.ARRAY_BUFFER,
+                        new Float32Array(buildSerialMesh(CONFIG.column, CONFIG.row)),
+                        gl.STATIC_DRAW);
+
                     vertexBuffer = gl.createBuffer();
                     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
                     gl.bufferData(
@@ -228,22 +306,6 @@
                         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
                         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
                         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, images);
-                        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, images);
-                        onDrawFrame();
-                    };
-
-                    var cover = new Image();
-                    cover.src      = 'img/month-img.png';
-                    cover.isLoaded = false;
-                    cover.onload   = function() {
-                        cover.isLoaded = true;
-                        gl.activeTexture(gl.TEXTURE0);
-                        gl.bindTexture(gl.TEXTURE_2D, textureDiffuse);
-                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, cover);
                         onDrawFrame();
                     };
                 }
@@ -260,11 +322,14 @@
                 if (textureDiffuse == null) {
                     return;
                 }
-                console.log("[onDrawFrame] *");
 
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
                 gl.useProgram(glProgram);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, serialBuffer);
+                gl.enableVertexAttribArray(indexSerial);
+                gl.vertexAttribPointer(indexSerial, 1, gl.FLOAT, false, 0, 0);
 
                 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
                 gl.enableVertexAttribArray(indexPosition);
@@ -276,12 +341,17 @@
 
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, textureDiffuse);
+                gl.bindTexture(gl.TEXTURE_2D, null);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                //gl.uniform1i(indexDiffuseSampler, textureDiffuse); // 0 for Texture unit id
-                //gl.uniform4fv(indexPlaceHolderColor, [0.3, 0.8, 0.3, 1.0]);
+                gl.uniform1i(indexDiffuseSampler, 0); // 0 for Texture unit id
+                gl.uniform1f(indexAlpha, 1.0);
+                gl.uniform4f(indexPlaceHolderColor, 0.8, 0.8, 0.8, 1.0);
+                gl.uniform4f(indexGridSize, CONFIG.column, CONFIG.row, CONFIG.vgap, CONFIG.hgap);
+                gl.uniform1iv(indexInvalidSlots, [1]);
+                gl.uniform1f(indexGapProgress, readProgressBar());
 
                 gl.drawElements(gl.TRIANGLES, indiceLength(CONFIG.column, CONFIG.row, CONFIG.displayCount), gl.UNSIGNED_SHORT, 0);
 
@@ -293,6 +363,11 @@
             function onGLCanvasDestoryed() {
                 console.log("[onGLCanvasDestoryed]");
 
+                gl.disableVertexAttribArray(indexSerial);
+                gl.deleteBuffer(serialBuffer);
+                indexSerial  = null;
+                serialBuffer = null;
+
                 gl.disableVertexAttribArray(indexPosition);
                 gl.deleteBuffer(vertexBuffer);
                 indexPosition = null;
@@ -302,6 +377,10 @@
                 gl.deleteBuffer(coordinateBuffer);
                 indexCoordinate  = null;
                 coordinateBuffer = null;
+
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0);
+                gl.deleteBuffer(indiceBuffer);
+                indiceBuffer = null;
             }
 
             function onGLCanvasResize() {
@@ -325,11 +404,21 @@
 
             function requestRender() {
                 requestAnimationFrame(onDrawFrame);
+                console.log("requestRender = " + readProgressBar());
+            }
+
+            function readProgressBar() {
+                let seekbar = document.getElementById("SeekBar");
+                return seekbar.value / seekbar.max;
             }
 
             /**
             * private methods
             */
+            function buildSerialMesh(columnCount, rowCount) {
+                return buildIndiceMesh(columnCount, rowCount);
+            }
+
             function buildVertexMesh(width, height, columnCount, rowCount, vgap, hgap) {
                 let gapCount    = columnCount < 1 ? 0 : (columnCount - 1);
                 let slotCount   = columnCount * rowCount;
@@ -445,6 +534,39 @@
                 }
             }
             </script>
+            <style>
+                input[type="range"] {
+                    position: absolute;
+                    left: 5%;
+                    bottom: 5%;
+                    margin: 1em;
+                    display: block;
+                    -webkit-appearance: none;
+                    background-color: #222222;
+                    width: 300px;
+                    height: 14px;
+                    border-radius: 10px;
+                    margin: 0 auto;
+                    outline: 0;
+                }
+                input[type="range"]::-webkit-slider-thumb {
+                    -webkit-appearance: none;
+                    background-color: #e74c3c;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    border: 2px solid white;
+                    cursor: pointer;
+                    transition: 0.3s ease-in-out;
+                }
+                input[type="range"]::-webkit-slider-thumb:hover {
+                    background-color: #FFFFFF;
+                    border: 2px solid #e74c3c;
+                }
+                input[type="range"]::-webkit-slider-thumb:active {
+                    transform: scale(1.0);
+                }
+            </style>
         </head>
     <body style="border:no-border; margin:0%; position:absolute; text-align:center; overflow-x: hidden; overflow-y: hidden; left:0px; top:0px; right:0px; bottom:0px"
         onload="onGLCanvasCreate();onGLCanvasResize();requestRender();"
@@ -462,6 +584,8 @@
             <div style="position:absolute; right:0%; bottom:0%; margin:1em; color:#FFFFFF; opacity:0.6; font-family:arial, sans-serif;  font-size:0.5em">
                 @Cocoonshu
             </div>
+            <input id="SeekBar" type="range" min="0" max="100" step="1" value="0" onchange="requestRender();" onmousemove="requestRender();"/>
         </div>
     </body>
+
 </html>
